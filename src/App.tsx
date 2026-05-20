@@ -706,7 +706,9 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
         const plan = { weekStart: wpData.week_start, schedule: wpData.plan_json, trackedSubjects: tracked, planId: wpData.id }
         setSavedPlan(plan)
         setCurrentWeekPlan(plan)
-        if (tracked.length > 0) setActiveSubject(tracked[0])
+        const firstClassSubject = loaded[0]?.subject
+        const preferred = firstClassSubject && tracked.includes(firstClassSubject) ? firstClassSubject : tracked[0]
+        if (preferred) setActiveSubject(preferred)
       }
 
       setClasses(loaded)
@@ -722,6 +724,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
 
   useEffect(() => {
     if (isDemo || !selectedClassId) return
+    const cls = classes.find(c => c.id === selectedClassId)
     supabase
       .from('week_plans')
       .select('id, week_start, plan_json, tracked_subjects')
@@ -734,10 +737,15 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
           const plan = { weekStart: data.week_start, schedule: data.plan_json, trackedSubjects: tracked, planId: data.id }
           setSavedPlan(plan)
           setCurrentWeekPlan(plan)
-          if (tracked.length > 0) setActiveSubject(tracked[0])
+          // Use the class's own subject if it's tracked; otherwise fall back to first tracked subject
+          const classSubject = cls?.subject
+          const preferred = classSubject && tracked.includes(classSubject) ? classSubject : tracked[0]
+          if (preferred) setActiveSubject(preferred)
         } else {
           setSavedPlan(null)
           setCurrentWeekPlan(null)
+          // Reset active subject to the class's own subject so no stale plan subject leaks through
+          if (cls?.subject) setActiveSubject(cls.subject)
         }
       })
   }, [isDemo, weekStart, selectedClassId])
