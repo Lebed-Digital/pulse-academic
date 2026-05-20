@@ -1141,9 +1141,11 @@ async function handleSuggestExitTicket() {
     setSavedPlan(newPlan)
     if (planViewWeek === 'current') {
       setCurrentWeekPlan(newPlan)
-      setActiveSubject(subjectChoices[0])
+      const cls = classes.find(c => c.id === selectedClassId)
+      const subjectForClass = cls?.subject && subjectChoices.includes(cls.subject) ? cls.subject : subjectChoices[0]
+      setActiveSubject(subjectForClass)
       const todayDay = filtered[today]
-      if (todayDay?.[subjectChoices[0]]) setLessonInput(todayDay[subjectChoices[0]].title)
+      if (todayDay?.[subjectForClass]) setLessonInput(todayDay[subjectForClass].title)
     }
     setPendingSchedule(null)
     setPlanSaving(false)
