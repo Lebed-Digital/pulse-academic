@@ -225,6 +225,13 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
   const [subjectChoices, setSubjectChoices] = useState<string[]>([])
   const [activeSubject, setActiveSubject] = useState<string | null>(null)
 
+  // Subject mapping: plan subject name -> class subject name
+  const [subjectMappings, setSubjectMappings] = useState<Record<string, string>>({})
+  // Subjects from the scanned plan that don't match any class subject
+  const [unmappedSubjects, setUnmappedSubjects] = useState<string[]>([])
+  // Draft mappings the teacher is filling in before confirming
+  const [pendingMappings, setPendingMappings] = useState<Record<string, string>>({})
+
   // Student profile sheet
   const [profileStudentId, setProfileStudentId] = useState<string | null>(null)
   const [profileStudentName, setProfileStudentName] = useState<string>('')
@@ -681,7 +688,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
 
       const firstClassId = loaded[0]?.id ?? ''
 
-      const [{ data: scRows }, { data: wpData }] = await Promise.all([
+      const [{ data: scRows }, { data: wpData }, { data: mappingRows }] = await Promise.all([
         supabase
           .from('student_classes')
           .select('class_id, students(id, name)')
@@ -689,9 +696,13 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
         supabase
           .from('week_plans')
           .select('id, week_start, plan_json, tracked_subjects')
-          .eq('class_id', firstClassId)
+          .eq('user_id', userId)
           .eq('week_start', weekStart)
           .maybeSingle(),
+        supabase
+          .from('subject_mappings')
+          .select('plan_subject, class_subject')
+          .eq('user_id', userId),
       ])
 
       const byClass: Record<string, AppStudent[]> = {}
@@ -699,6 +710,12 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
       for (const row of scRows ?? []) {
         const s = row.students as unknown as AppStudent
         if (s && byClass[row.class_id]) byClass[row.class_id].push(s)
+      }
+
+      if (mappingRows && mappingRows.length > 0) {
+        const map: Record<string, string> = {}
+        for (const r of mappingRows) map[r.plan_subject] = r.class_subject
+        setSubjectMappings(map)
       }
 
       if (wpData) {
@@ -720,15 +737,15 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
     load()
   }, [userId, isDemo, weekStart])
 
-  // ── Reload week plan when user switches class or week ────────────────────
+  // ── Reload week plan when week changes (plan is shared across all classes) ──
 
   useEffect(() => {
-    if (isDemo || !selectedClassId) return
+    if (isDemo || !userId) return
     const cls = classes.find(c => c.id === selectedClassId)
     supabase
       .from('week_plans')
       .select('id, week_start, plan_json, tracked_subjects')
-      .eq('class_id', selectedClassId)
+      .eq('user_id', userId)
       .eq('week_start', weekStart)
       .maybeSingle()
       .then(({ data }) => {
@@ -737,18 +754,16 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
           const plan = { weekStart: data.week_start, schedule: data.plan_json, trackedSubjects: tracked, planId: data.id }
           setSavedPlan(plan)
           setCurrentWeekPlan(plan)
-          // Use the class's own subject if it's tracked; otherwise fall back to first tracked subject
           const classSubject = cls?.subject
           const preferred = classSubject && tracked.includes(classSubject) ? classSubject : tracked[0]
           if (preferred) setActiveSubject(preferred)
         } else {
           setSavedPlan(null)
           setCurrentWeekPlan(null)
-          // Reset active subject to the class's own subject so no stale plan subject leaks through
           if (cls?.subject) setActiveSubject(cls.subject)
         }
       })
-  }, [isDemo, weekStart, selectedClassId])
+  }, [isDemo, weekStart, userId])
 
   // ── Load history when switching to history screen ────────────────────────
 
@@ -806,7 +821,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
     supabase
       .from('week_plans')
       .select('id, week_start, plan_json, tracked_subjects')
-      .eq('class_id', selectedClassId)
+      .eq('user_id', userId)
       .eq('week_start', activePlanWeekStart)
       .maybeSingle()
       .then(({ data }) => {
@@ -817,7 +832,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
         }
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, userId, isDemo, activePlanWeekStart, selectedClassId])
+  }, [screen, userId, isDemo, activePlanWeekStart])
 
   // ── Lesson actions ────────────────────────────────────────────────────────
 
@@ -1029,16 +1044,83 @@ async function handleSuggestExitTicket() {
     setPlanSaved(false)
     try {
       const schedule = await parseLessonPlan(planText, activePlanWeekStart)
-      const found = new Set<string>()
-      for (const day of Object.values(schedule)) for (const subj of Object.keys(day)) found.add(subj)
-      setPendingSchedule(schedule)
-      setSubjectChoices([...found].sort())
+      const foundSubjects = new Set<string>()
+      for (const day of Object.values(schedule)) for (const subj of Object.keys(day)) foundSubjects.add(subj)
+
+      const classSubjects = new Set(classes.map(c => c.subject).filter(Boolean))
+
+      // Apply saved mappings: rename plan subjects to class subjects in the schedule
+      const renamedSchedule: WeekSchedule = {}
+      for (const [date, day] of Object.entries(schedule)) {
+        const renamedDay: Record<string, DayLesson> = {}
+        for (const [subj, lesson] of Object.entries(day)) {
+          const mapped = subjectMappings[subj] ?? subj
+          renamedDay[mapped] = lesson
+        }
+        renamedSchedule[date] = renamedDay
+      }
+
+      // Find subjects that still don't match any class subject
+      const renamedSubjects = new Set<string>()
+      for (const day of Object.values(renamedSchedule)) for (const subj of Object.keys(day)) renamedSubjects.add(subj)
+      const unmatched = [...renamedSubjects].filter(s => !classSubjects.has(s))
+
+      if (unmatched.length > 0) {
+        // Show mapping UI — teacher needs to link these to their classes
+        const draft: Record<string, string> = {}
+        for (const s of unmatched) draft[s] = [...classSubjects][0] ?? s
+        setPendingMappings(draft)
+        setUnmappedSubjects(unmatched)
+        setPendingSchedule(renamedSchedule)
+        setSubjectChoices([...renamedSubjects].sort())
+      } else {
+        // All subjects matched — go straight to subject confirmation step
+        setPendingSchedule(renamedSchedule)
+        setSubjectChoices([...renamedSubjects].sort())
+      }
       setPlanText('')
     } catch (err) {
       setPlanError(`Error: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setPlanLoading(false)
     }
+  }
+
+  async function confirmMappings() {
+    if (!pendingSchedule || isDemo) return
+    // Apply the pending mappings to the schedule
+    const updatedSchedule: WeekSchedule = {}
+    for (const [date, day] of Object.entries(pendingSchedule)) {
+      const updatedDay: Record<string, DayLesson> = {}
+      for (const [subj, lesson] of Object.entries(day)) {
+        const mapped = pendingMappings[subj] ?? subj
+        updatedDay[mapped] = lesson
+      }
+      updatedSchedule[date] = updatedDay
+    }
+
+    // Save mappings to DB
+    const newMappings = { ...subjectMappings }
+    const upsertRows = unmappedSubjects.map(planSubj => ({
+      user_id: userId,
+      plan_subject: planSubj,
+      class_subject: pendingMappings[planSubj] ?? planSubj,
+    }))
+    if (upsertRows.length > 0) {
+      await supabase
+        .from('subject_mappings')
+        .upsert(upsertRows, { onConflict: 'user_id,plan_subject' })
+      for (const row of upsertRows) newMappings[row.plan_subject] = row.class_subject
+      setSubjectMappings(newMappings)
+    }
+
+    // Update pending schedule and choices, clear mapping state
+    const updatedSubjects = new Set<string>()
+    for (const day of Object.values(updatedSchedule)) for (const s of Object.keys(day)) updatedSubjects.add(s)
+    setPendingSchedule(updatedSchedule)
+    setSubjectChoices([...updatedSubjects].sort())
+    setUnmappedSubjects([])
+    setPendingMappings({})
   }
 
   async function confirmSubjects() {
@@ -1052,7 +1134,7 @@ async function handleSuggestExitTicket() {
     }
     const { data } = await supabase
       .from('week_plans')
-      .upsert({ user_id: userId, class_id: selectedClassId, week_start: activePlanWeekStart, plan_json: filtered, tracked_subjects: subjectChoices }, { onConflict: 'class_id,week_start' })
+      .upsert({ user_id: userId, week_start: activePlanWeekStart, plan_json: filtered, tracked_subjects: subjectChoices }, { onConflict: 'user_id,week_start' })
       .select('id')
       .single()
     const newPlan = { weekStart: activePlanWeekStart, schedule: filtered, trackedSubjects: subjectChoices, planId: data?.id }
@@ -1075,7 +1157,7 @@ async function handleSuggestExitTicket() {
     setPlanSaving(true)
     await supabase
       .from('week_plans')
-      .upsert({ user_id: userId, class_id: selectedClassId, week_start: activePlanWeekStart, plan_json: schedule, tracked_subjects: savedPlan.trackedSubjects }, { onConflict: 'class_id,week_start' })
+      .upsert({ user_id: userId, week_start: activePlanWeekStart, plan_json: schedule, tracked_subjects: savedPlan.trackedSubjects }, { onConflict: 'user_id,week_start' })
     const updated = { ...savedPlan, schedule }
     setSavedPlan(updated)
     if (planViewWeek === 'current') {
@@ -1337,6 +1419,7 @@ async function handleSuggestExitTicket() {
     today, expandedDay, editingDay, editDraft, editSubject, setEditDraft, saveEdit, setEditingDay, setEditSubject, handleSwap, startEdit,
     setExpandedDay, handleSwapSubject, skipConfirmSubject, setSkipConfirmSubject, skipSubject, copyToNext, skipConfirmDay, setSkipConfirmDay,
     skipDay, setSavedPlan, fileInputRef, handleFileUpload, planText, setPlanText, planError, handleSavePlan, planLoading, planSaved,
+    unmappedSubjects, pendingMappings, setPendingMappings, confirmMappings,
     activeLesson, isDemo, handleSuggestExitTicket, exitTicketLoading, setActiveLesson, setLessonInput, setExitTickets, setActiveExitTicket, setShowExitTickets,
     activeSubject, setLessonInputExternal: setLessonInput, startLessonByTitle, formatDate, lessonInput, startLesson, DEMO_LESSONS, selectedClassId,
     showExitTickets, activeExitTicket, exitTickets, currentStudents: sortedCurrentStudents, loading, studentStatuses, formatStudentName, nameFormat, STATUS_DOT, STATUS_INITIAL_BG, STATUS_RING, STATUS_CARD, tap, confirmAllGotIt,

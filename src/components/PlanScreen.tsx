@@ -21,6 +21,12 @@ interface ExtraProps extends PlanScreenProps {
   skipDay: (dateISO: string, pushRemaining: boolean) => void
   handleSavePlan: () => void
   handleUndo: () => void
+  // Subject mapping
+  unmappedSubjects: string[]
+  pendingMappings: Record<string, string>
+  setPendingMappings: (m: Record<string, string>) => void
+  confirmMappings: () => void
+  classes: import('../types').AppClass[]
 }
 
 export default function PlanScreen(props: ExtraProps) {
@@ -29,8 +35,11 @@ export default function PlanScreen(props: ExtraProps) {
     savedPlan, undoSnapshot, handleUndo, swapSource, setSwapSource, swapSubjectSource, setSwapSubjectSource, DAYS, getDateForDayOffset,
     today, expandedDay, editingDay, editDraft, editSubject, setEditDraft, saveEdit, setEditingDay, setEditSubject, handleSwap, startEdit,
     setExpandedDay, handleSwapSubject, skipConfirmSubject, setSkipConfirmSubject, skipSubject, copyToNext, skipConfirmDay, setSkipConfirmDay,
-    skipDay, setSavedPlan, fileInputRef, handleFileUpload, planText, setPlanText, planError, handleSavePlan, planLoading, planSaved
+    skipDay, setSavedPlan, fileInputRef, handleFileUpload, planText, setPlanText, planError, handleSavePlan, planLoading, planSaved,
+    unmappedSubjects, pendingMappings, setPendingMappings, confirmMappings, classes,
   } = props
+
+  const classSubjects = [...new Set(classes.map(c => c.subject).filter(Boolean))].sort()
 
   const surface = { background: '#161618', border: '1px solid rgba(255,255,255,0.07)' }
   const inputStyle = { background: '#1e1e22', borderColor: 'rgba(255,255,255,0.1)', color: '#f0f0f2' }
@@ -63,7 +72,40 @@ export default function PlanScreen(props: ExtraProps) {
         </div>
       )}
 
-      {pendingSchedule && (
+      {/* ── Mapping step: AI found subjects that don't match class subjects ── */}
+      {pendingSchedule && unmappedSubjects.length > 0 && (
+        <div className="rounded-2xl px-4 py-4 mb-4" style={surface}>
+          <p className="text-sm font-semibold mb-1" style={{ color: '#f0f0f2' }}>Match subjects to your classes</p>
+          <p className="text-xs mb-4" style={{ color: '#5a5a6a' }}>
+            The AI found subjects that don't exactly match your class names. Tell it which class each one belongs to. This is saved for future uploads.
+          </p>
+          <div className="flex flex-col gap-3 mb-4">
+            {unmappedSubjects.map(planSubj => (
+              <div key={planSubj} className="flex items-center gap-3">
+                <span className="text-sm font-semibold w-24 shrink-0" style={{ color: '#f0f0f2' }}>{planSubj}</span>
+                <span className="text-xs shrink-0" style={{ color: '#5a5a6a' }}>→</span>
+                <select
+                  value={pendingMappings[planSubj] ?? classSubjects[0] ?? ''}
+                  onChange={e => setPendingMappings({ ...pendingMappings, [planSubj]: e.target.value })}
+                  className="flex-1 text-sm rounded-xl px-3 py-2 outline-none border focus:border-teal-500"
+                  style={{ background: '#1e1e22', borderColor: 'rgba(255,255,255,0.1)', color: '#f0f0f2' }}
+                >
+                  {classSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                  <option value={planSubj}>Keep as "{planSubj}" (not matched)</option>
+                </select>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={confirmMappings} className="flex-1 py-2.5 bg-teal-500 text-white text-sm font-semibold rounded-2xl">
+              Confirm matches
+            </button>
+            <button type="button" onClick={() => { setPendingSchedule(null); setSubjectChoices([]) }} className="px-4 py-2.5 text-sm font-semibold rounded-2xl" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {pendingSchedule && unmappedSubjects.length === 0 && (
         <div className="rounded-2xl px-4 py-4 mb-4" style={surface}>
           <p className="text-sm font-semibold mb-1" style={{ color: '#f0f0f2' }}>Which subjects do you want to track?</p>
           <p className="text-xs mb-4" style={{ color: '#5a5a6a' }}>Uncheck any subjects you don't grade (e.g. Health, PE).</p>

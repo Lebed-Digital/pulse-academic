@@ -197,6 +197,10 @@ export interface PlanScreenProps {
   savePlan?: (schedule: WeekSchedule, tracked: string[]) => void
   planSaving: boolean
   planSaved: boolean
+  unmappedSubjects: string[]
+  pendingMappings: Record<string, string>
+  setPendingMappings: (m: Record<string, string>) => void
+  confirmMappings: () => void
   expandedDay: string | null
   setExpandedDay: (day: string | null) => void
   editingDay: string | null
