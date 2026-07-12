@@ -178,22 +178,43 @@ export default function TrackerScreen(props: TrackerScreenProps) {
               const needsHelp = currentStudents.filter((s: AppStudent) => studentStatuses[s.id] === 'needs-help').length
               const absent = currentStudents.filter((s: AppStudent) => studentStatuses[s.id] === 'absent').length
               const unmarked = currentStudents.filter((s: AppStudent) => studentStatuses[s.id] === undefined).length
+              const marked = gotIt + almost + needsHelp
+              const pct = marked > 0 ? Math.round((gotIt / marked) * 100) : 0
+              const meterColor = pct >= 70 ? 'bg-emerald-400' : pct >= 40 ? 'bg-yellow-400' : 'bg-red-400'
+              const meterText = pct >= 70 ? 'text-emerald-400' : pct >= 40 ? 'text-yellow-400' : 'text-red-400'
               return (
                 <div className="mb-3">
-                  <div className="flex items-center justify-between bg-[#111c14] border border-emerald-900/40 rounded-2xl px-4 py-2.5">
-                    <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /><span className="text-emerald-400">{gotIt} Got It</span></span>
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-400" /><span className="text-yellow-400">{almost} Almost</span></span>
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /><span className="text-red-400">{needsHelp} Needs Help</span></span>
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400" /><span className="text-blue-400">{absent} Absent</span></span>
-                      {unmarked > 0 && (
-                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: '#5a5a6a' }} /><span style={{ color: '#8b8b9a' }}>{unmarked} Unmarked</span></span>
+                  <div className="bg-[#111c14] border border-emerald-900/40 rounded-2xl px-4 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
+                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /><span className="text-emerald-400">{gotIt} Got It</span></span>
+                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-400" /><span className="text-yellow-400">{almost} Almost</span></span>
+                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /><span className="text-red-400">{needsHelp} Needs Help</span></span>
+                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400" /><span className="text-blue-400">{absent} Absent</span></span>
+                        {unmarked > 0 && (
+                          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: '#5a5a6a' }} /><span style={{ color: '#8b8b9a' }}>{unmarked} Unmarked</span></span>
+                        )}
+                      </div>
+                      {!isDemo && (unmarked > 0 || savedFlash) && (
+                        <button type="button" onClick={handleConfirmAllGotIt} className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors shrink-0 ml-2 ${savedFlash ? 'bg-emerald-700/60 text-emerald-300' : 'bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/60'}`}>
+                          {savedFlash ? '✓ Saved!' : '✓ Mark rest Got It'}
+                        </button>
                       )}
                     </div>
-                    {!isDemo && (unmarked > 0 || savedFlash) && (
-                      <button type="button" onClick={handleConfirmAllGotIt} className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors shrink-0 ml-2 ${savedFlash ? 'bg-emerald-700/60 text-emerald-300' : 'bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/60'}`}>
-                        {savedFlash ? '✓ Saved!' : '✓ Mark rest Got It'}
-                      </button>
+                    {marked === 0 ? (
+                      <p className="mt-2 text-[11px]" style={{ color: '#5a5a6a' }}>Tap circles as you check in with students.</p>
+                    ) : (
+                      <>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="h-1.5 flex-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                            <div className={`h-full rounded-full ${meterColor}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className={`text-[11px] font-semibold shrink-0 ${meterText}`}>{pct}% got it</span>
+                        </div>
+                        {pct < 50 && marked >= 5 && (
+                          <p className="mt-1 text-[11px] text-red-400">More than half the class is stuck. Consider pausing to reteach.</p>
+                        )}
+                      </>
                     )}
                   </div>
                   {(() => {

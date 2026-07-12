@@ -175,6 +175,8 @@ No em dashes in this output; the `──` box-drawing characters above match the
 
 ## Phase 4: Live understanding meter during the lesson
 
+> **STATUS: DONE.** All in the counts-bar block of TrackerScreen.tsx: bar + `{pct}% got it` label from marked students only, red threshold line at `pct < 50 && marked >= 5`, muted "Tap circles" line when nothing is marked yet. Start with Phase 5.
+
 **Goal:** glanceable "is this landing?" signal while teaching.
 
 ### Changes
