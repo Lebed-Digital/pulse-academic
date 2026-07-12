@@ -461,7 +461,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
           studentMap.set(row.student_id, { id: row.student_id, name: row.student_name, lessons: [], notes: [] })
         }
         const student = studentMap.get(row.student_id)!
-        student.lessons.push({ lessonId: row.lesson_id, title: row.lesson_title, date: row.date, status: row.status as 'needs-help' | 'almost' | 'absent', skill: row.skill ?? null })
+        student.lessons.push({ lessonId: row.lesson_id, title: row.lesson_title, date: row.date, status: row.status as 'needs-help' | 'almost' | 'absent', skill: row.skill ?? null, retaught_count: row.retaught_count ?? 0 })
         if (row.note?.trim()) student.notes.push({ date: row.date, lessonTitle: row.lesson_title, text: row.note.trim() })
       }
 
@@ -496,8 +496,10 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
       if (cls.needsSupport.length > 0) {
         lines.push('Needs Support:')
         for (const s of cls.needsSupport) {
-          const topics = [...new Set(s.lessons.filter(l => l.status === 'needs-help').map(l => l.title))].join(', ')
-          lines.push(`  • ${s.name} — ${topics}`)
+          const rows = s.lessons.filter(l => l.status === 'needs-help')
+          const topics = [...new Set(rows.map(l => l.title))].join(', ')
+          const retaught = Math.max(0, ...rows.map(l => l.retaught_count ?? 0))
+          lines.push(`  • ${s.name} — ${topics}${retaught > 0 ? ` (retaught ${retaught}x)` : ''}`)
           for (const n of s.notes.slice(0, 3)) {
             lines.push(`    - Note (${formatDate(n.date)} | ${n.lessonTitle}): ${n.text}`)
           }
@@ -523,7 +525,8 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
         lines.push('Worth a Check-In:')
         for (const s of cls.checkIn) {
           const topics = [...new Set(s.lessons.map(l => l.title))].join(', ')
-          lines.push(`  • ${s.name} — ${topics}`)
+          const retaught = Math.max(0, ...s.lessons.map(l => l.retaught_count ?? 0))
+          lines.push(`  • ${s.name} — ${topics}${retaught > 0 ? ` (retaught ${retaught}x)` : ''}`)
           for (const n of s.notes.slice(0, 3)) {
             lines.push(`    - Note (${formatDate(n.date)} | ${n.lessonTitle}): ${n.text}`)
           }
@@ -550,7 +553,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
       groups.forEach((g, i) => {
         lines.push(`Group ${i + 1}: ${g.label} (${g.students.length} student${g.students.length !== 1 ? 's' : ''})`)
         for (const s of g.students) {
-          lines.push(`  • ${s.name} (${s.status === 'needs-help' ? 'needs help' : 'almost'})`)
+          lines.push(`  • ${s.name} (${s.status === 'needs-help' ? 'needs help' : 'almost'})${s.retaughtCount > 0 ? ` (retaught ${s.retaughtCount}x)` : ''}`)
         }
       })
       if (cls.absent.length > 0) {
@@ -823,14 +826,14 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
       const { data } = await supabase
         .from('checkins')
         .select(`
-          id, status, note, skill,
+          id, status, note, skill, retaught_count,
           lessons(id, title, date, class_id, classes(id, name)),
           students(id, name)
         `)
         .eq('user_id', userId)
         .gte('created_at', schoolYearStart.toISOString())
         .order('created_at', { ascending: false })
-      type RawCheckin = { status: string; note?: string; skill?: string | null; lessons: { id: string; title: string; date: string; class_id: string; classes: { name: string } } | null; students: { id: string; name: string } | null }
+      type RawCheckin = { status: string; note?: string; skill?: string | null; retaught_count?: number; lessons: { id: string; title: string; date: string; class_id: string; classes: { name: string } } | null; students: { id: string; name: string } | null }
       const rows: HistoryRow[] = ((data ?? []) as unknown as RawCheckin[]).map(r => ({
         class_id: r.lessons?.class_id ?? '',
         class_name: r.lessons?.classes?.name ?? '',
@@ -842,6 +845,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
         status: r.status,
         note: r.note ?? undefined,
         skill: r.skill ?? null,
+        retaught_count: r.retaught_count ?? 0,
       }))
       setHistoryData(rows)
       setHistoryLoading(false)
@@ -1009,6 +1013,22 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
     const row = historyData.find(r => r.student_id === studentId && r.lesson_id === lessonId && (r.skill ?? null) === (skill ?? null))
     supabase.from('checkins').upsert(
       [{ user_id: userId, lesson_id: lessonId, student_id: studentId, status: 'got-it' as Status, note: row?.note ?? null, skill: skill ?? null }],
+      { onConflict: 'lesson_id,student_id,skill' }
+    ).then()
+  }
+
+  function markRetaught(studentId: string, lessonId: string, skill: string | null | undefined) {
+    const row = historyData.find(r => r.student_id === studentId && r.lesson_id === lessonId && (r.skill ?? null) === (skill ?? null))
+    if (!row) return
+    const nextCount = (row.retaught_count ?? 0) + 1
+    setHistoryData(cur => cur.map(r =>
+      r.student_id === studentId && r.lesson_id === lessonId && (r.skill ?? null) === (skill ?? null)
+        ? { ...r, retaught_count: nextCount }
+        : r
+    ))
+    if (isDemo) return
+    supabase.from('checkins').upsert(
+      [{ user_id: userId, lesson_id: lessonId, student_id: studentId, status: row.status as Status, note: row.note ?? null, skill: skill ?? null, retaught_count: nextCount }],
       { onConflict: 'lesson_id,student_id,skill' }
     ).then()
   }
@@ -1529,7 +1549,7 @@ async function handleSuggestExitTicket() {
     toggleShowSkills,
     openProfile,
     checkinNotes, atRiskStudentIds, onCirclePointerDown, onCirclePointerUp, onCirclePointerCancel,
-    todayFlaggedCount, goToTodayGroups, repeatStrugglers,
+    todayFlaggedCount, goToTodayGroups, repeatStrugglers, markRetaught,
   };
 
   return (

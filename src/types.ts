@@ -38,6 +38,7 @@ export type HistoryRow = {
   status: string
   note?: string
   skill?: string | null
+  retaught_count?: number
 }
 
 export type SavedPlan = {
@@ -50,7 +51,7 @@ export type SavedPlan = {
 export type ReportStudent = {
   id: string
   name: string
-  lessons: { lessonId: string; title: string; date: string; status: 'needs-help' | 'almost' | 'absent'; skill?: string | null }[]
+  lessons: { lessonId: string; title: string; date: string; status: 'needs-help' | 'almost' | 'absent'; skill?: string | null; retaught_count?: number }[]
   notes: { date: string; lessonTitle: string; text: string }[]
 }
 
@@ -168,6 +169,7 @@ export interface ReportsScreenProps {
   setReportView: (view: 'list' | 'groups') => void
   isDemo: boolean
   repeatStrugglers: Map<string, { label: string; days: number }>
+  markRetaught: (studentId: string, lessonId: string, skill: string | null | undefined) => void
 }
 
 export interface HistoryScreenProps {

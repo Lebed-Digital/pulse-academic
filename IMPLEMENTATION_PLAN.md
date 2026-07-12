@@ -218,6 +218,8 @@ All in `TrackerScreen.tsx`, inside the existing counts-bar block (~line 158).
 
 ## Phase 6: Close the loop on remediation
 
+> **STATUS: DONE.** Migration `add_retaught_count_to_checkins` applied to production (column confirmed via list_tables). `retaught_count` threaded through the history select, HistoryRow, ReportStudent lessons, and PullGroupStudent (`retaughtCount`, dedupe keeps max). `markRetaught()` in App.tsx next to dismissCheckin (skips Supabase write in demo). ReportsScreen: inline Got it now / Still needs work / ✕ chooser on needs-help and almost rows (absent keeps one-tap dismiss) and on the group-level Pulled and retaught button. Muted `retaught Nx` pills in both views; retaught students sort to the top of groups (in buildPullGroups, so copy text matches). Copy texts append `(retaught Nx)`. All 6 phases complete.
+
 **Goal:** dismissing a flag records an outcome, so "still needs work" kids come back tomorrow and the app builds a re-teach history.
 
 ### Database migration (Supabase, run via MCP `apply_migration`)

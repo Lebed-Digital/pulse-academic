@@ -14,12 +14,17 @@ export default function ReportsScreen(props: ExtraProps) {
   const {
     classes, classLabel, reportClassId, setReportClassId, reportRange, setReportRange, reportCustomStart, setReportCustomStart, reportCustomEnd,
     setReportCustomEnd, reportData, copyReport, reportCopied, showSkills, dismissCheckin, clearLesson, reportView, setReportView, isDemo,
-    repeatStrugglers,
+    repeatStrugglers, markRetaught,
   } = props
 
   // key: `${studentId}|${lessonId}|${skill ?? ''}`
   const [pendingDismiss, setPendingDismiss] = useState<Set<string>>(new Set())
   const timerRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  // inline outcome chooser, keyed by row dismissKey or group gid
+  const [choosing, setChoosing] = useState<Set<string>>(new Set())
+  function openChooser(key: string) { setChoosing(cur => new Set([...cur, key])) }
+  function closeChooser(key: string) { setChoosing(cur => { const next = new Set(cur); next.delete(key); return next }) }
 
   // pending clear-all: lessonId → timeout
   const [pendingClear, setPendingClear] = useState<Set<string>>(new Set())
@@ -73,6 +78,8 @@ export default function ReportsScreen(props: ExtraProps) {
     for (const cls of data) {
       for (const g of cls.groups) {
         g.students.sort((a, b) => {
+          const ta = a.retaughtCount > 0 ? 1 : 0, tb = b.retaughtCount > 0 ? 1 : 0
+          if (ta !== tb) return tb - ta
           if (a.status !== b.status) return a.status === 'needs-help' ? -1 : 1
           const ra = repeatStrugglers.has(a.id), rb = repeatStrugglers.has(b.id)
           if (ra !== rb) return ra ? -1 : 1
@@ -189,6 +196,11 @@ export default function ReportsScreen(props: ExtraProps) {
                       <div key={s.id} className="flex items-center gap-2 pl-1">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${s.status === 'needs-help' ? 'bg-red-400' : 'bg-yellow-400'}`} />
                         <p className="text-sm" style={{ color: '#f0f0f2' }}>{s.name}</p>
+                        {s.retaughtCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full shrink-0" style={{ background: 'rgba(255,255,255,0.08)', color: '#8b8b9a', fontSize: '10px' }}>
+                            retaught {s.retaughtCount}x
+                          </span>
+                        )}
                         {(() => {
                           const rs = repeatStrugglers.get(s.id)
                           return rs ? (
@@ -205,9 +217,19 @@ export default function ReportsScreen(props: ExtraProps) {
                       <button type="button" onClick={() => handleGroupUndo(gid)} className="text-xs font-semibold px-3 py-1.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.08)', color: '#8b8b9a' }}>
                         Undo
                       </button>
+                    ) : choosing.has(gid) ? (
+                      <>
+                        <button type="button" onClick={() => { closeChooser(gid); handleGroupDismiss(gid, g.students) }} className="text-xs font-semibold px-3 py-1.5 rounded-xl" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}>
+                          Got it now
+                        </button>
+                        <button type="button" onClick={() => { closeChooser(gid); g.students.forEach(s => markRetaught(s.id, s.lessonId, s.skill)) }} className="text-xs font-semibold px-3 py-1.5 rounded-xl" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15' }}>
+                          Still needs work
+                        </button>
+                        <button type="button" onClick={() => closeChooser(gid)} className="text-xs px-2 py-1.5" style={{ color: '#5a5a6a' }}>✕</button>
+                      </>
                     ) : (
                       <>
-                        <button type="button" onClick={() => handleGroupDismiss(gid, g.students)} className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}>
+                        <button type="button" onClick={() => openChooser(gid)} className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}>
                           ✓ Pulled and retaught
                         </button>
                         {!isDemo && (
@@ -325,14 +347,25 @@ export default function ReportsScreen(props: ExtraProps) {
                               <div key={key} className={`flex items-center justify-between gap-2 pl-4 py-1 transition-opacity ${isPending ? 'opacity-40' : ''}`}>
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold" style={{ color: '#f0f0f2' }}>{s.name}</p>
-                                  <p className="text-xs mt-0.5" style={{ color: '#5a5a6a' }}>{label}</p>
+                                  <p className="text-xs mt-0.5" style={{ color: '#5a5a6a' }}>
+                                    {label}
+                                    {(l.retaught_count ?? 0) > 0 && (
+                                      <span className="ml-1.5 px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: '#8b8b9a', fontSize: '10px' }}>retaught {l.retaught_count}x</span>
+                                    )}
+                                  </p>
                                 </div>
                                 {isPending ? (
                                   <button type="button" onClick={() => handleUndo(s.id, l.lessonId, l.skill)} className="text-xs font-semibold px-2.5 py-1 rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.08)', color: '#8b8b9a' }}>
                                     Undo
                                   </button>
+                                ) : choosing.has(key) ? (
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button type="button" onClick={() => { closeChooser(key); handleDismiss(s.id, l.lessonId, l.skill, 'needs-help') }} className="text-xs font-semibold px-2.5 py-1 rounded-xl" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}>Got it now</button>
+                                    <button type="button" onClick={() => { closeChooser(key); markRetaught(s.id, l.lessonId, l.skill) }} className="text-xs font-semibold px-2.5 py-1 rounded-xl" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15' }}>Still needs work</button>
+                                    <button type="button" onClick={() => closeChooser(key)} className="text-xs px-1.5 py-1" style={{ color: '#5a5a6a' }}>✕</button>
+                                  </div>
                                 ) : (
-                                  <button type="button" onClick={() => handleDismiss(s.id, l.lessonId, l.skill, 'needs-help')} className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }} title="Mark as remediated">
+                                  <button type="button" onClick={() => openChooser(key)} className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }} title="Mark as remediated">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                   </button>
                                 )}
@@ -385,14 +418,25 @@ export default function ReportsScreen(props: ExtraProps) {
                               <div key={key} className={`flex items-center justify-between gap-2 pl-4 py-1 transition-opacity ${isPending ? 'opacity-40' : ''}`}>
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold" style={{ color: '#f0f0f2' }}>{s.name}</p>
-                                  <p className="text-xs mt-0.5" style={{ color: '#5a5a6a' }}>{label}</p>
+                                  <p className="text-xs mt-0.5" style={{ color: '#5a5a6a' }}>
+                                    {label}
+                                    {(l.retaught_count ?? 0) > 0 && (
+                                      <span className="ml-1.5 px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: '#8b8b9a', fontSize: '10px' }}>retaught {l.retaught_count}x</span>
+                                    )}
+                                  </p>
                                 </div>
                                 {isPending ? (
                                   <button type="button" onClick={() => handleUndo(s.id, l.lessonId, l.skill)} className="text-xs font-semibold px-2.5 py-1 rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.08)', color: '#8b8b9a' }}>
                                     Undo
                                   </button>
+                                ) : choosing.has(key) ? (
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button type="button" onClick={() => { closeChooser(key); handleDismiss(s.id, l.lessonId, l.skill, 'almost') }} className="text-xs font-semibold px-2.5 py-1 rounded-xl" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}>Got it now</button>
+                                    <button type="button" onClick={() => { closeChooser(key); markRetaught(s.id, l.lessonId, l.skill) }} className="text-xs font-semibold px-2.5 py-1 rounded-xl" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15' }}>Still needs work</button>
+                                    <button type="button" onClick={() => closeChooser(key)} className="text-xs px-1.5 py-1" style={{ color: '#5a5a6a' }}>✕</button>
+                                  </div>
                                 ) : (
-                                  <button type="button" onClick={() => handleDismiss(s.id, l.lessonId, l.skill, 'almost')} className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15' }} title="Mark as checked in">
+                                  <button type="button" onClick={() => openChooser(key)} className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15' }} title="Mark as checked in">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                   </button>
                                 )}

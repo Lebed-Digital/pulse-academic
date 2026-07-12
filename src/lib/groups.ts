@@ -7,6 +7,7 @@ export type PullGroupStudent = {
   lessonId: string
   lessonTitle: string
   skill: string | null
+  retaughtCount: number
 }
 
 export type PullGroup = {
@@ -35,6 +36,7 @@ export function buildPullGroups(reportData: ReportClass[], showSkills: boolean):
         if (!byKey.has(key)) byKey.set(key, new Map())
         const members = byKey.get(key)!
         const existing = members.get(student.id)
+        const retaughtCount = Math.max(existing?.retaughtCount ?? 0, lesson.retaught_count ?? 0)
         if (!existing || (existing.status === 'almost' && lesson.status === 'needs-help')) {
           members.set(student.id, {
             id: student.id,
@@ -43,7 +45,10 @@ export function buildPullGroups(reportData: ReportClass[], showSkills: boolean):
             lessonId: lesson.lessonId,
             lessonTitle: lesson.title,
             skill,
+            retaughtCount,
           })
+        } else {
+          existing.retaughtCount = retaughtCount
         }
       }
     }
@@ -51,6 +56,8 @@ export function buildPullGroups(reportData: ReportClass[], showSkills: boolean):
     const sorted = [...byKey.entries()]
       .map(([key, members]) => {
         const students = [...members.values()].sort((a, b) => {
+          const ra = a.retaughtCount > 0 ? 1 : 0, rb = b.retaughtCount > 0 ? 1 : 0
+          if (ra !== rb) return rb - ra
           if (a.status !== b.status) return a.status === 'needs-help' ? -1 : 1
           return a.name.localeCompare(b.name)
         })
