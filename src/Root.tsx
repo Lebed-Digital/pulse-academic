@@ -19,7 +19,7 @@ export default function Root() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (!session) setState('auth')
+      setState(session ? 'app' : 'auth')
     })
 
     return () => subscription.unsubscribe()
