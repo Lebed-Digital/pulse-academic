@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { parseLessonPlan, suggestExitTickets, parseStudentNames, type DayLesson, type WeekSchedule, type ExitTicket } from './lib/groq'
+import { buildPullGroups } from './lib/groups'
 import {
   DEMO_CLASSES, DEMO_STUDENTS, DEMO_STUDENT_CLASSES, DEMO_LESSONS, DEMO_CHECKINS,
   type DemoClass, type DemoStudent,
@@ -406,6 +407,13 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
   const [reportCustomStart, setReportCustomStart] = useState('')
   const [reportCustomEnd, setReportCustomEnd] = useState('')
   const [reportCopied, setReportCopied] = useState(false)
+  const [reportView, setReportViewState] = useState<'list' | 'groups'>(
+    () => localStorage.getItem('reportView') === 'groups' ? 'groups' : 'list'
+  )
+  function setReportView(view: 'list' | 'groups') {
+    setReportViewState(view)
+    localStorage.setItem('reportView', view)
+  }
 
   function reportDateBounds(): { start: string; end: string } | null {
     const [y, m] = today.split('-').map(Number)
@@ -472,15 +480,17 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyData, classes, studentsByClass, reportClassId, reportRange, reportCustomStart, reportCustomEnd, today])
 
-  function buildReportText(): string {
+  function reportRangeLabel(): string {
     const bounds = reportDateBounds()
-    const rangeLabel = reportRange === 'today' ? `Today (${formatDate(today)})`
+    return reportRange === 'today' ? `Today (${formatDate(today)})`
       : reportRange === 'week' ? `This week (${formatWeek(weekStart)})`
       : reportRange === 'month' ? `This month`
       : reportRange === 'custom' && bounds ? `${formatDate(bounds.start)} – ${formatDate(bounds.end)}`
       : 'All time'
+  }
 
-    const lines: string[] = [`Student Support Report — ${rangeLabel}`, '']
+  function buildReportText(): string {
+    const lines: string[] = [`Student Support Report — ${reportRangeLabel()}`, '']
     for (const cls of reportData) {
       lines.push(`── ${cls.className} ──`)
       if (cls.needsSupport.length > 0) {
@@ -531,8 +541,33 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
     return lines.join('\n').trim()
   }
 
+  function buildGroupsText(): string {
+    const lines: string[] = [`Small Group Plan - ${reportRangeLabel()}`, '']
+    const classGroups = buildPullGroups(reportData, showSkills)
+    for (const cls of reportData) {
+      lines.push(`── ${cls.className} ──`)
+      const groups = classGroups.find(c => c.classId === cls.classId)?.groups ?? []
+      groups.forEach((g, i) => {
+        lines.push(`Group ${i + 1}: ${g.label} (${g.students.length} student${g.students.length !== 1 ? 's' : ''})`)
+        for (const s of g.students) {
+          lines.push(`  • ${s.name} (${s.status === 'needs-help' ? 'needs help' : 'almost'})`)
+        }
+      })
+      if (cls.absent.length > 0) {
+        if (groups.length > 0) lines.push('')
+        lines.push('Catch-up (absent):')
+        for (const s of cls.absent) {
+          const lessons = [...new Set(s.lessons.filter(l => l.status === 'absent').map(l => l.title))].join(', ')
+          lines.push(`  • ${s.name} - ${lessons}`)
+        }
+      }
+      lines.push('')
+    }
+    return lines.join('\n').trim()
+  }
+
   async function copyReport() {
-    await navigator.clipboard.writeText(buildReportText())
+    await navigator.clipboard.writeText(reportView === 'groups' ? buildGroupsText() : buildReportText())
     setReportCopied(true)
     setTimeout(() => setReportCopied(false), 2500)
   }
@@ -1435,7 +1470,7 @@ async function handleSuggestExitTicket() {
     historyLoading, selectedStudentId, historyStudents, studentHistoryRows, STATUS_PILL, STATUS_LABEL,
     filteredHistory, selectedLesson, lessonDetail, lessonGroups,
     reportClassId, setReportClassId, reportRange, setReportRange, reportCustomStart, setReportCustomStart, reportCustomEnd,
-    setReportCustomEnd, reportData, copyReport, reportCopied, dismissCheckin, clearLesson,
+    setReportCustomEnd, reportData, copyReport, reportCopied, dismissCheckin, clearLesson, reportView, setReportView,
     rosterAddingClass, setRosterAddingClass, rosterNewClassName, setRosterNewClassName, rosterAddClass, rosterNewClassSubject,
     setRosterNewClassSubject, SUBJECTS, rosterSaving, studentsByClass, rosterRenaming, rosterRenameValue, setRosterRenameValue, rosterRenameClass,
     setRosterRenaming, rosterConfirmRemove, rosterRemoveStudent, setRosterConfirmRemove, rosterNewStudentName, setRosterNewStudentName,

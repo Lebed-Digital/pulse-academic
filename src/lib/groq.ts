@@ -83,6 +83,28 @@ ${text.slice(0, 3000)}`
   return JSON.parse(match[0])
 }
 
+export type MiniLesson = { focus: string; warmUp: string; activity: string; check: string }
+
+export async function suggestMiniLesson(skillOrTopic: string, lessonTitles: string[], studentCount: number): Promise<MiniLesson> {
+  const prompt = `You are an expert elementary and middle school interventionist. Plan a 5 to 10 minute small group re-teach for ${studentCount} student${studentCount === 1 ? '' : 's'} who did not master: "${skillOrTopic}".
+
+Context, the lessons where they struggled: ${lessonTitles.join('; ') || skillOrTopic}
+
+Return ONLY a JSON object with these keys:
+- "focus": one sentence naming the single misconception or gap to target
+- "warmUp": under 200 characters, a 1 minute activation task to start the group
+- "activity": under 300 characters, the core guided practice with concrete example content (real numbers, words, or problems)
+- "check": under 200 characters, how to confirm they can rejoin the class
+
+Plain text only, no LaTeX, no markdown formatting. No explanation outside the JSON.
+Example: {"focus":"Students treat the numerator and denominator as two separate whole numbers.","warmUp":"Show a paper strip folded into 4 parts. Ask: what does the 4 in 3/4 tell us?","activity":"Draw a number line 0 to 1. Together place 1/4, 2/4, 3/4. Each student then places 2/3 on their own line and explains the spacing.","check":"Each student places 3/5 on a blank number line correctly before returning to their seat."}`
+
+  const raw = await groqChat([{ role: 'user', content: prompt }])
+  const match = raw.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Could not parse mini lesson')
+  return JSON.parse(match[0])
+}
+
 export type ExitTicket = { title: string; description: string }
 
 export async function suggestExitTickets(lesson: DayLesson | string): Promise<ExitTicket[]> {
