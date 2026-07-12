@@ -102,6 +102,8 @@ export interface TrackerScreenProps {
   onCirclePointerCancel: () => void
   showSkills: boolean
   onGoToPlan: () => void
+  todayFlaggedCount: number
+  goToTodayGroups: () => void
 }
 
 export interface RosterScreenProps {

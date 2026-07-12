@@ -9,6 +9,7 @@ export default function TrackerScreen(props: TrackerScreenProps) {
     activeSubject, savedPlan, setLessonInputExternal, startLessonByTitle, formatDate, lessonInput, startLesson, DEMO_LESSONS, selectedClassId,
     showExitTickets, activeExitTicket, exitTickets, currentStudents, loading, studentStatuses, formatStudentName, nameFormat, STATUS_INITIAL_BG, STATUS_RING, STATUS_CARD, tap, confirmAllGotIt,
     openProfile, checkinNotes, atRiskStudentIds, onCirclePointerDown, onCirclePointerUp, onCirclePointerCancel, showSkills, onGoToPlan,
+    todayFlaggedCount, goToTodayGroups,
   } = props
 
   const [savedFlash, setSavedFlash] = useState(false)
@@ -140,6 +141,21 @@ export default function TrackerScreen(props: TrackerScreenProps) {
       {/* Student grid */}
       <main className="flex-1 px-4 py-6">
         {!activeLesson ? (
+          <>
+          {todayFlaggedCount > 0 && (
+            <button
+              type="button"
+              onClick={goToTodayGroups}
+              className="mx-auto mt-4 flex w-full max-w-sm items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-teal-900/20"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderLeft: '3px solid #14b8a6' }}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold" style={{ color: '#f0f0f2' }}>{todayFlaggedCount} student{todayFlaggedCount === 1 ? '' : 's'} flagged today</p>
+                <p className="text-xs mt-0.5" style={{ color: '#8b8b9a' }}>Tap to build your small groups for tomorrow.</p>
+              </div>
+              <span className="shrink-0 text-xs font-semibold text-teal-400">View pull list ›</span>
+            </button>
+          )}
           <div className="mx-auto mt-10 flex min-h-40 max-w-sm flex-col items-center justify-center rounded-3xl px-6 py-10 text-center" style={{ border: '1px dashed rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }}>
             <p className="text-sm font-semibold" style={{ color: '#8b8b9a' }}>
               {currentStudents.length === 0 ? 'No students in this class yet.' : 'Select a lesson to begin.'}
@@ -148,6 +164,7 @@ export default function TrackerScreen(props: TrackerScreenProps) {
               {currentStudents.length === 0 ? 'Add students from the roster when you are ready.' : 'Your class check-in grid will appear here.'}
             </p>
           </div>
+          </>
         ) : loading ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <svg className="animate-spin h-6 w-6 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
@@ -257,6 +274,16 @@ export default function TrackerScreen(props: TrackerScreenProps) {
               </>
             )
           })()}
+          {todayFlaggedCount > 0 && (
+            <button
+              type="button"
+              onClick={goToTodayGroups}
+              className="mx-auto mt-5 flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors hover:bg-teal-900/40"
+              style={{ background: 'rgba(20,184,166,0.1)', color: '#2dd4bf' }}
+            >
+              {todayFlaggedCount} flagged today · View pull list ›
+            </button>
+          )}
           </>
         )}
       </main>

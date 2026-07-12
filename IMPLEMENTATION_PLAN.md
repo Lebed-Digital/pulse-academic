@@ -155,6 +155,8 @@ No em dashes in this output; the `──` box-drawing characters above match the
 
 ## Phase 3: End-of-day wrap-up card on the Tracker
 
+> **STATUS: DONE.** `todayFlaggedCount` memo + `goToTodayGroups` in App.tsx (passed via screenProps, typed in `TrackerScreenProps`). TrackerScreen renders the wrap-up card above the no-lesson empty state and a slim teal pill under the student grid when a lesson is active. Start with Phase 4.
+
 **Goal:** the pull list finds the teacher instead of hiding in Reports.
 
 ### Changes

@@ -1444,6 +1444,21 @@ async function handleSuggestExitTicket() {
     return { atRiskStudentIds: ids, sortedCurrentStudents: sorted }
   }, [historyData, currentStudents])
 
+  const todayFlaggedCount = useMemo(() => {
+    const ids = new Set<string>()
+    for (const r of historyData) {
+      if (r.date === today && (r.status === 'needs-help' || r.status === 'almost')) ids.add(r.student_id)
+    }
+    return ids.size
+  }, [historyData, today])
+
+  function goToTodayGroups() {
+    setReportRange('today')
+    setReportClassId('all')
+    setReportView('groups')
+    setScreen('reports')
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (dataLoading) {
@@ -1485,6 +1500,7 @@ async function handleSuggestExitTicket() {
     toggleShowSkills,
     openProfile,
     checkinNotes, atRiskStudentIds, onCirclePointerDown, onCirclePointerUp, onCirclePointerCancel,
+    todayFlaggedCount, goToTodayGroups,
   };
 
   return (
