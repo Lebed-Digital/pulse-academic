@@ -63,6 +63,8 @@ Read this carefully. Do not guess; everything below was verified against the cod
 
 ## Phase 2: Small Group Builder (the core feature)
 
+> **STATUS: DONE.** View toggle state (`reportView`) lives in App.tsx (lifted for Phase 3), persisted in localStorage key `reportView`. Grouping logic in `src/lib/groups.ts` (`buildPullGroups`; students carry `lessonTitle` for the AI context). `suggestMiniLesson` in groq.ts. `buildGroupsText()` in App.tsx next to `buildReportText()`. Groups UI + catch-up list + mini lesson panel in ReportsScreen.tsx (absent rows extracted to `renderAbsentSection`). Start with Phase 3.
+
 **Goal:** the Reports screen gains a second view that converts flagged students into ready-to-pull small groups, grouped by skill, capped at a realistic table size, with a one-tap "retaught" action per group.
 
 ### 2a. View toggle on Reports
