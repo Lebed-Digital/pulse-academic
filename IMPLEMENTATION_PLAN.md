@@ -48,7 +48,7 @@ Read this carefully. Do not guess; everything below was verified against the cod
    - Where status is read as `studentStatuses[student.id] ?? 'got-it'` (line ~198 and the counts block ~lines 158-162), treat a missing key as `'unmarked'`.
    - Unmarked circle style: neutral gray, visually distinct from the emerald got-it style. Use `background: 'rgba(255,255,255,0.08)'` with text color `#8b8b9a` and no ring. Add entries to the style maps OR branch locally in TrackerScreen; prefer adding an `'unmarked'` key to `STATUS_INITIAL_BG` / `STATUS_RING` / `STATUS_CARD` in App.tsx with the record types widened locally (do NOT add `'unmarked'` to the `Status` union in types.ts, since that type maps to database values).
    - Counts bar: add a gray count chip `N Unmarked` that only renders when the count is > 0.
-4. **`confirmAllGotIt()` semantic fix:** it must flip **only unmarked students** to got-it. Students already marked almost, needs-help, or absent are untouched. Rename the button label in TrackerScreen to `✓ Mark rest Got It` (shows when at least one student is unmarked). This preserves the intended workflow (bulk-confirm the kids who were fine) without destroying flags.
+4. **`confirmAllGotIt()`:** ALREADY FIXED in commit efa190a. It now flips only students with no entry in `studentStatuses` (the untapped ones) and leaves almost/needs-help/absent flags alone. Do not change that logic. Your only remaining task here: rename the button label in TrackerScreen to `✓ Mark rest Got It` and show it when at least one student is unmarked (instead of the current `gotIt > 0` condition).
 5. **Demo mode:** demo taps only touch local state; keep that behavior, just apply the same unmarked default.
 
 ### Verify
