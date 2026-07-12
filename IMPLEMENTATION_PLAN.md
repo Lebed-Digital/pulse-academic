@@ -198,6 +198,8 @@ All in `TrackerScreen.tsx`, inside the existing counts-bar block (~line 158).
 
 ## Phase 5: Repeat-struggler escalation
 
+> **STATUS: DONE.** `repeatStrugglers` memo in App.tsx (above the at-risk memo; keyed by student id, worst group by distinct days, skill label else class subject). Keys unioned into `atRiskStudentIds`. Threaded through screenProps and typed on both Tracker and Reports prop interfaces. TrackerScreen: `Nx` pill top-left of the card. ReportsScreen: `Nx this week` pill after the name; group members re-sorted (needs-help first, repeat strugglers first within status) in the `pullGroups` memo. Start with Phase 6.
+
 **Goal:** surface "same kid, same skill, multiple days" because that is the student actively falling behind.
 
 ### Changes

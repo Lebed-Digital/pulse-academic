@@ -1420,6 +1420,34 @@ async function handleSuggestExitTicket() {
 
   const STATUS_SCORE: Record<string, number> = { 'got-it': 3, 'almost': 2, 'needs-help': 1 }
 
+  const repeatStrugglers = useMemo(() => {
+    const d = new Date(`${today}T12:00:00`)
+    d.setDate(d.getDate() - 6)
+    const cutoff = d.toISOString().slice(0, 10)
+    const subjectByClass = new Map(classes.map(c => [c.id, c.subject]))
+    const byStudent = new Map<string, Map<string, { label: string; dates: Set<string> }>>()
+    for (const r of historyData) {
+      if (r.status !== 'needs-help') continue
+      if (r.date < cutoff || r.date > today) continue
+      const skill = r.skill?.trim()
+      const key = skill ? `skill|${skill}` : `class|${r.class_id}`
+      const label = skill || subjectByClass.get(r.class_id) || r.class_name
+      if (!byStudent.has(r.student_id)) byStudent.set(r.student_id, new Map())
+      const groups = byStudent.get(r.student_id)!
+      if (!groups.has(key)) groups.set(key, { label, dates: new Set() })
+      groups.get(key)!.dates.add(r.date)
+    }
+    const result = new Map<string, { label: string; days: number }>()
+    for (const [studentId, groups] of byStudent) {
+      let worst: { label: string; days: number } | null = null
+      for (const { label, dates } of groups.values()) {
+        if (dates.size >= 2 && (!worst || dates.size > worst.days)) worst = { label, days: dates.size }
+      }
+      if (worst) result.set(studentId, worst)
+    }
+    return result
+  }, [historyData, classes, today])
+
   const { atRiskStudentIds, sortedCurrentStudents } = useMemo(() => {
     const scores = new Map<string, number>()
     for (const student of currentStudents) {
@@ -1435,6 +1463,7 @@ async function handleSuggestExitTicket() {
     const ids = new Set(
       [...scores.entries()].filter(([, avg]) => avg < 1.8).map(([id]) => id)
     )
+    for (const id of repeatStrugglers.keys()) ids.add(id)
     const sorted = [...currentStudents].sort((a, b) => {
       const aAt = ids.has(a.id), bAt = ids.has(b.id)
       if (aAt && !bAt) return -1
@@ -1442,7 +1471,7 @@ async function handleSuggestExitTicket() {
       return (scores.get(a.id) ?? 3) - (scores.get(b.id) ?? 3)
     })
     return { atRiskStudentIds: ids, sortedCurrentStudents: sorted }
-  }, [historyData, currentStudents])
+  }, [historyData, currentStudents, repeatStrugglers])
 
   const todayFlaggedCount = useMemo(() => {
     const ids = new Set<string>()
@@ -1500,7 +1529,7 @@ async function handleSuggestExitTicket() {
     toggleShowSkills,
     openProfile,
     checkinNotes, atRiskStudentIds, onCirclePointerDown, onCirclePointerUp, onCirclePointerCancel,
-    todayFlaggedCount, goToTodayGroups,
+    todayFlaggedCount, goToTodayGroups, repeatStrugglers,
   };
 
   return (

@@ -13,7 +13,8 @@ type MiniState = { status: 'loading' } | { status: 'error' } | { status: 'done';
 export default function ReportsScreen(props: ExtraProps) {
   const {
     classes, classLabel, reportClassId, setReportClassId, reportRange, setReportRange, reportCustomStart, setReportCustomStart, reportCustomEnd,
-    setReportCustomEnd, reportData, copyReport, reportCopied, showSkills, dismissCheckin, clearLesson, reportView, setReportView, isDemo
+    setReportCustomEnd, reportData, copyReport, reportCopied, showSkills, dismissCheckin, clearLesson, reportView, setReportView, isDemo,
+    repeatStrugglers,
   } = props
 
   // key: `${studentId}|${lessonId}|${skill ?? ''}`
@@ -67,7 +68,20 @@ export default function ReportsScreen(props: ExtraProps) {
   const chipBase = { background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }
 
   // ── Groups view ────────────────────────────────────────────────────────────
-  const pullGroups = useMemo(() => buildPullGroups(reportData, showSkills), [reportData, showSkills])
+  const pullGroups = useMemo(() => {
+    const data = buildPullGroups(reportData, showSkills)
+    for (const cls of data) {
+      for (const g of cls.groups) {
+        g.students.sort((a, b) => {
+          if (a.status !== b.status) return a.status === 'needs-help' ? -1 : 1
+          const ra = repeatStrugglers.has(a.id), rb = repeatStrugglers.has(b.id)
+          if (ra !== rb) return ra ? -1 : 1
+          return a.name.localeCompare(b.name)
+        })
+      }
+    }
+    return data
+  }, [reportData, showSkills, repeatStrugglers])
 
   // pending group dismiss: `${classId}|${group.key}` → timeout
   const [pendingGroups, setPendingGroups] = useState<Set<string>>(new Set())
@@ -175,6 +189,14 @@ export default function ReportsScreen(props: ExtraProps) {
                       <div key={s.id} className="flex items-center gap-2 pl-1">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${s.status === 'needs-help' ? 'bg-red-400' : 'bg-yellow-400'}`} />
                         <p className="text-sm" style={{ color: '#f0f0f2' }}>{s.name}</p>
+                        {(() => {
+                          const rs = repeatStrugglers.get(s.id)
+                          return rs ? (
+                            <span className="px-1.5 py-0.5 rounded-full font-bold shrink-0" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontSize: '9px', lineHeight: 1 }} title={`Needs help with ${rs.label} on ${rs.days} days this week`}>
+                              {rs.days}x this week
+                            </span>
+                          ) : null
+                        })()}
                       </div>
                     ))}
                   </div>

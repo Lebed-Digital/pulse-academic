@@ -9,7 +9,7 @@ export default function TrackerScreen(props: TrackerScreenProps) {
     activeSubject, savedPlan, setLessonInputExternal, startLessonByTitle, formatDate, lessonInput, startLesson, DEMO_LESSONS, selectedClassId,
     showExitTickets, activeExitTicket, exitTickets, currentStudents, loading, studentStatuses, formatStudentName, nameFormat, STATUS_INITIAL_BG, STATUS_RING, STATUS_CARD, tap, confirmAllGotIt,
     openProfile, checkinNotes, atRiskStudentIds, onCirclePointerDown, onCirclePointerUp, onCirclePointerCancel, showSkills, onGoToPlan,
-    todayFlaggedCount, goToTodayGroups,
+    todayFlaggedCount, goToTodayGroups, repeatStrugglers,
   } = props
 
   const [savedFlash, setSavedFlash] = useState(false)
@@ -260,6 +260,14 @@ export default function TrackerScreen(props: TrackerScreenProps) {
                   {checkinNotes[student.id] && (
                     <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400" title="Has note" />
                   )}
+                  {(() => {
+                    const rs = repeatStrugglers.get(student.id)
+                    return rs ? (
+                      <span className="absolute top-1 left-1 px-1 py-0.5 rounded-full font-bold" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontSize: '9px', lineHeight: 1 }} title={`Needs help with ${rs.label} on ${rs.days} days this week`}>
+                        {rs.days}x
+                      </span>
+                    ) : null
+                  })()}
                   <button
                     type="button"
                     onClick={() => openProfile(student.id, student.name)}

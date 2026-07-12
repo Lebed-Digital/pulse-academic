@@ -104,6 +104,7 @@ export interface TrackerScreenProps {
   onGoToPlan: () => void
   todayFlaggedCount: number
   goToTodayGroups: () => void
+  repeatStrugglers: Map<string, { label: string; days: number }>
 }
 
 export interface RosterScreenProps {
@@ -166,6 +167,7 @@ export interface ReportsScreenProps {
   reportView: 'list' | 'groups'
   setReportView: (view: 'list' | 'groups') => void
   isDemo: boolean
+  repeatStrugglers: Map<string, { label: string; days: number }>
 }
 
 export interface HistoryScreenProps {
