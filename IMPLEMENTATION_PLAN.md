@@ -36,6 +36,8 @@ Read this carefully. Do not guess; everything below was verified against the cod
 
 ## Phase 1: "Unmarked" visual state on the Tracker (data integrity fix)
 
+> **STATUS: DONE** (commits efa190a and 3d8ee9d). Skip this phase. Note for later phases: an untapped student is `studentStatuses[id] === undefined`, displayed as `'unmarked'` (gray). The style maps in App.tsx are typed `Record<Status | 'unmarked', string>`. Start with Phase 2.
+
 **Problem:** an untapped student renders identically to a confirmed got-it student. A teacher who never got to a kid records them as understanding the lesson, so they can never appear on the pull list. Also, `confirmAllGotIt()` (App.tsx ~line 941) currently flips **almost and needs-help students back to got-it**, silently erasing flags the teacher set during the lesson.
 
 **Design decision (do not deviate):** "unmarked" is a **UI-only state**, not a new database status. Absence of a key in `studentStatuses` = unmarked. No schema change.
