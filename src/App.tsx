@@ -20,14 +20,16 @@ import type { Status, Screen, HistoryTab, NameFormat, AppClass, AppStudent, AppL
 
 const STATUS_CYCLE: Status[] = ['got-it', 'almost', 'needs-help', 'absent']
 
-const STATUS_RING: Record<Status, string> = {
+const STATUS_RING: Record<Status | 'unmarked', string> = {
+  'unmarked':   '',
   'got-it':     'ring-[3px] ring-emerald-400',
   'almost':     'ring-[3px] ring-yellow-400',
   'needs-help': 'ring-[3px] ring-red-400',
   'absent':     'ring-[3px] ring-blue-400',
 }
 
-const STATUS_INITIAL_BG: Record<Status, string> = {
+const STATUS_INITIAL_BG: Record<Status | 'unmarked', string> = {
+  'unmarked':   'bg-[#1e1e22] text-[#8b8b9a] ring-1 ring-white/10',
   'got-it':     'bg-[#1a2a1e] text-white',
   'almost':     'bg-[#2a2310] text-white',
   'needs-help': 'bg-[#2a1a1a] text-white',
@@ -41,7 +43,8 @@ const STATUS_DOT: Record<Status, string> = {
   'absent':     'bg-blue-400',
 }
 
-const STATUS_CARD: Record<Status, string> = {
+const STATUS_CARD: Record<Status | 'unmarked', string> = {
+  'unmarked':   'bg-[#141416] border border-white/10',
   'got-it':     'bg-[#111c14] border border-emerald-900/60',
   'almost':     'bg-[#1c1a0e] border border-yellow-900/60',
   'needs-help': 'bg-[#1c1010] border border-red-900/60',
@@ -918,15 +921,18 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
       navigator.vibrate(50);
     }
     if (!activeLesson) return
+    // Unmarked students start the cycle at got-it; once marked they never
+    // return to unmarked.
+    const nextStatus = (current: Status | undefined): Status =>
+      current === undefined
+        ? 'got-it'
+        : STATUS_CYCLE[(STATUS_CYCLE.indexOf(current) + 1) % STATUS_CYCLE.length]
     if (isDemo) {
-      setStudentStatuses(cur => {
-        const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur[studentId] ?? 'got-it') + 1) % STATUS_CYCLE.length]
-        return { ...cur, [studentId]: next }
-      })
+      setStudentStatuses(cur => ({ ...cur, [studentId]: nextStatus(cur[studentId]) }))
       return
     }
     setStudentStatuses(cur => {
-      const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur[studentId] ?? 'got-it') + 1) % STATUS_CYCLE.length]
+      const next = nextStatus(cur[studentId])
       supabase
         .from('checkins')
         .upsert(

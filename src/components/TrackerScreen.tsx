@@ -156,10 +156,11 @@ export default function TrackerScreen(props: TrackerScreenProps) {
         ) : (
           <>
             {activeLesson && currentStudents.length > 0 && (() => {
-              const gotIt = currentStudents.filter((s: AppStudent) => (studentStatuses[s.id] ?? 'got-it') === 'got-it').length
+              const gotIt = currentStudents.filter((s: AppStudent) => studentStatuses[s.id] === 'got-it').length
               const almost = currentStudents.filter((s: AppStudent) => studentStatuses[s.id] === 'almost').length
               const needsHelp = currentStudents.filter((s: AppStudent) => studentStatuses[s.id] === 'needs-help').length
               const absent = currentStudents.filter((s: AppStudent) => studentStatuses[s.id] === 'absent').length
+              const unmarked = currentStudents.filter((s: AppStudent) => studentStatuses[s.id] === undefined).length
               return (
                 <div className="mb-3">
                   <div className="flex items-center justify-between bg-[#111c14] border border-emerald-900/40 rounded-2xl px-4 py-2.5">
@@ -168,10 +169,13 @@ export default function TrackerScreen(props: TrackerScreenProps) {
                       <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-400" /><span className="text-yellow-400">{almost} Almost</span></span>
                       <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /><span className="text-red-400">{needsHelp} Needs Help</span></span>
                       <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400" /><span className="text-blue-400">{absent} Absent</span></span>
+                      {unmarked > 0 && (
+                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: '#5a5a6a' }} /><span style={{ color: '#8b8b9a' }}>{unmarked} Unmarked</span></span>
+                      )}
                     </div>
-                    {!isDemo && gotIt > 0 && (
+                    {!isDemo && (unmarked > 0 || savedFlash) && (
                       <button type="button" onClick={handleConfirmAllGotIt} className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors shrink-0 ml-2 ${savedFlash ? 'bg-emerald-700/60 text-emerald-300' : 'bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/60'}`}>
-                        {savedFlash ? '✓ Saved!' : '✓ Save All Got It'}
+                        {savedFlash ? '✓ Saved!' : '✓ Mark rest Got It'}
                       </button>
                     )}
                   </div>
@@ -195,7 +199,7 @@ export default function TrackerScreen(props: TrackerScreenProps) {
             const rest = currentStudents.filter((s: AppStudent) => !atRiskStudentIds.has(s.id))
             const allNames = currentStudents.map((s: AppStudent) => s.name)
             const renderCard = (student: AppStudent) => {
-              const status = studentStatuses[student.id] ?? 'got-it'
+              const status = studentStatuses[student.id] ?? 'unmarked'
               const initial = student.name.trim()[0].toUpperCase()
               const displayName = formatStudentName(student.name, nameFormat, allNames)
               return (

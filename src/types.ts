@@ -89,9 +89,9 @@ export interface TrackerScreenProps {
   studentStatuses: Record<string, Status>
   formatStudentName: (fullName: string, format: NameFormat, classmates: string[]) => string
   nameFormat: NameFormat
-  STATUS_INITIAL_BG: Record<Status, string>
-  STATUS_RING: Record<Status, string>
-  STATUS_CARD: Record<Status, string>
+  STATUS_INITIAL_BG: Record<Status | 'unmarked', string>
+  STATUS_RING: Record<Status | 'unmarked', string>
+  STATUS_CARD: Record<Status | 'unmarked', string>
   tap: (studentId: string) => void
   confirmAllGotIt: () => void
   openProfile: (id: string, name: string) => void
