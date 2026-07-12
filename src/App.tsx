@@ -940,11 +940,10 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
 
   function confirmAllGotIt() {
     if (!activeLesson || isDemo) return
-    // Only flip non-absent students — absent (blue) stays blue
-    const toFlip = currentStudents.filter(s => {
-      const status = studentStatuses[s.id] ?? 'got-it'
-      return status !== 'got-it' && status !== 'absent'
-    })
+    // Persist got-it only for students the teacher never tapped (no entry in
+    // studentStatuses, so no checkin row exists yet). Students already marked
+    // almost/needs-help/absent keep their flags.
+    const toFlip = currentStudents.filter(s => studentStatuses[s.id] === undefined)
     if (toFlip.length === 0) return
     setStudentStatuses(cur => {
       const next = { ...cur }
