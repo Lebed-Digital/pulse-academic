@@ -14,6 +14,27 @@ export default function AuthScreen({ onDemo }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [confirmSent, setConfirmSent] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+
+  async function handleForgotPassword() {
+    setError('')
+    if (!email) {
+      setError('Enter your email above first, then tap Forgot password.')
+      return
+    }
+    setLoading(true)
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://app.pulseacademic.com',
+      })
+      if (err) throw err
+      setResetSent(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,7 +68,20 @@ export default function AuthScreen({ onDemo }: Props) {
           <p className="text-sm mt-1" style={{ color: '#5a5a6a' }}>Academic Tracker</p>
         </div>
 
-        {confirmSent ? (
+        {resetSent ? (
+          <div className="rounded-2xl px-6 py-8 text-center" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <p className="text-2xl mb-3">📬</p>
+            <h2 className="text-base font-bold mb-2" style={{ color: '#f0f0f2' }}>Check your email</h2>
+            <p className="text-sm" style={{ color: '#8b8b9a' }}>We sent a password reset link to <span className="font-semibold" style={{ color: '#f0f0f2' }}>{email}</span>. Click it to set a new password.</p>
+            <button
+              type="button"
+              onClick={() => { setResetSent(false); setMode('login') }}
+              className="mt-5 text-sm font-semibold text-teal-400 hover:text-teal-300"
+            >
+              Back to log in
+            </button>
+          </div>
+        ) : confirmSent ? (
           <div className="rounded-2xl px-6 py-8 text-center" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)' }}>
             <p className="text-2xl mb-3">📬</p>
             <h2 className="text-base font-bold mb-2" style={{ color: '#f0f0f2' }}>Check your email</h2>
@@ -101,6 +135,20 @@ export default function AuthScreen({ onDemo }: Props) {
                 {loading ? '…' : mode === 'login' ? 'Log in' : 'Create account'}
               </button>
             </form>
+
+            {mode === 'login' && (
+              <div className="mt-3 text-center">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={loading}
+                  className="text-xs font-semibold hover:text-teal-400 transition-colors disabled:opacity-50"
+                  style={{ color: '#5a5a6a' }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
             <div className="mt-4 text-center">
               <button

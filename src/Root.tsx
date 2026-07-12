@@ -4,8 +4,9 @@ import { supabase } from './lib/supabase'
 import App from './App.tsx'
 import AuthScreen from './AuthScreen.tsx'
 import SetupScreen from './SetupScreen.tsx'
+import ResetPasswordScreen from './ResetPasswordScreen.tsx'
 
-type AppState = 'loading' | 'auth' | 'setup' | 'app' | 'demo'
+type AppState = 'loading' | 'auth' | 'setup' | 'app' | 'demo' | 'recovery'
 
 export default function Root() {
   const [state, setState] = useState<AppState>('loading')
@@ -17,9 +18,13 @@ export default function Root() {
       setState(session ? 'app' : 'auth')
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
-      setState(session ? 'app' : 'auth')
+      if (event === 'PASSWORD_RECOVERY') {
+        setState('recovery')
+      } else {
+        setState(session ? 'app' : 'auth')
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -40,6 +45,10 @@ export default function Root() {
 
   if (state === 'demo') {
     return <App userId="demo-user" isDemo onSignOut={() => setState('auth')} />
+  }
+
+  if (state === 'recovery') {
+    return <ResetPasswordScreen onDone={() => setState(session ? 'app' : 'auth')} />
   }
 
   if (state === 'setup' && session) {
