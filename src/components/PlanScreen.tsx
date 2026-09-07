@@ -1,5 +1,5 @@
 import type { PlanScreenProps } from '../types'
-import type { WeekSchedule, DayLesson } from '../lib/groq'
+import type { WeekSchedule, DayLesson } from '../lib/ai'
 
 interface ExtraProps extends PlanScreenProps {
   formatWeek: (weekStart: string) => string

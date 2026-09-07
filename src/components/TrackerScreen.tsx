@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { TrackerScreenProps, AppStudent } from '../types'
 import type { DemoLesson } from '../lib/demo'
-import type { DayLesson } from '../lib/groq'
+import type { DayLesson } from '../lib/ai'
 
 export default function TrackerScreen(props: TrackerScreenProps) {
   const {

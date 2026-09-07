@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import type { ReportsScreenProps, AppClass, ReportClass, ReportStudent } from '../types'
 import { buildPullGroups, type PullGroup, type PullGroupStudent } from '../lib/groups'
-import { suggestMiniLesson, type MiniLesson } from '../lib/groq'
+import { suggestMiniLesson, type MiniLesson } from '../lib/ai'
 
 interface ExtraProps extends ReportsScreenProps {
   classLabel: (cls: AppClass) => string

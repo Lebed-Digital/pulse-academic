@@ -1,4 +1,4 @@
-import type { DayLesson, WeekSchedule, ExitTicket } from './lib/groq'
+import type { DayLesson, WeekSchedule, ExitTicket } from './lib/ai'
 import type { DemoLesson } from './lib/demo'
 
 export type Status = 'got-it' | 'almost' | 'needs-help' | 'absent'
