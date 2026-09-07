@@ -15,7 +15,10 @@ export default function Root() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      setState(session ? 'app' : 'auth')
+      // A PASSWORD_RECOVERY event from onAuthStateChange below can resolve
+      // before or after this. Never let a plain getSession() check clobber
+      // an in-progress recovery flow back to 'app'.
+      setState(cur => (cur === 'recovery' ? cur : session ? 'app' : 'auth'))
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
