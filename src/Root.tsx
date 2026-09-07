@@ -22,8 +22,18 @@ function isRecoveryCallbackUrl(): boolean {
   return params.get('type') === 'recovery' && Boolean(params.get('access_token'))
 }
 
+// The /reset interception page. The emailed link now points here on our own
+// domain carrying only a token_hash, so nothing is redeemed until the teacher
+// presses the button. Reached before any token exists, so it cannot depend on
+// the hash check above.
+function isResetPage(): boolean {
+  return typeof window !== 'undefined' && window.location.pathname === '/reset'
+}
+
 export default function Root() {
-  const [state, setState] = useState<AppState>(() => (isRecoveryCallbackUrl() ? 'recovery' : 'loading'))
+  const [state, setState] = useState<AppState>(() =>
+    isRecoveryCallbackUrl() || isResetPage() ? 'recovery' : 'loading',
+  )
   const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
