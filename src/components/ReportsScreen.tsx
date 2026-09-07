@@ -229,8 +229,8 @@ export default function ReportsScreen(props: ExtraProps) {
                       </>
                     ) : (
                       <>
-                        <button type="button" onClick={() => openChooser(gid)} className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}>
-                          ✓ Pulled and retaught
+                        <button type="button" onClick={() => openChooser(gid)} className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }} title="Choose an outcome for this group">
+                          Pulled and retaught?
                         </button>
                         {!isDemo && (
                           <button type="button" onClick={() => handleMiniLesson(gid, g)} disabled={miniState?.status === 'loading'} className="text-xs font-semibold px-3 py-1.5 rounded-xl text-amber-400 hover:text-amber-300 transition-colors" style={{ background: 'rgba(251,191,36,0.1)' }}>
@@ -309,11 +309,16 @@ export default function ReportsScreen(props: ExtraProps) {
       </div>
 
       {/* View toggle */}
-      <div className="grid grid-cols-2 gap-2 mb-4 sm:flex sm:gap-1.5">
+      <div className="grid grid-cols-2 gap-2 mb-1.5 sm:flex sm:gap-1.5">
         {([['list', 'List'], ['groups', 'Groups']] as const).map(([val, label]) => (
           <button key={val} type="button" onClick={() => setReportView(val)} className="px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-center sm:px-5" style={reportView === val ? { background: '#14b8a6', color: '#fff' } : chipBase}>{label}</button>
         ))}
       </div>
+      <p className="text-xs mb-4" style={{ color: '#5a5a6a' }}>
+        {reportView === 'groups'
+          ? 'Groups: flagged students clustered into small reteach groups, ready to pull.'
+          : 'List: every flagged student, one row at a time. Switch to Groups to build reteach groups.'}
+      </p>
 
       {/* Results */}
       {reportData.length === 0 ? (
@@ -334,7 +339,7 @@ export default function ReportsScreen(props: ExtraProps) {
                     <div className="mb-3">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
-                        <p className="text-xs font-bold text-red-400 uppercase tracking-wide">Needs Support</p>
+                        <p className="text-xs font-bold text-red-400 uppercase tracking-wide">Needs Help</p>
                       </div>
                       <div className="flex flex-col gap-1">
                         {cls.needsSupport.map((s: ReportStudent) => {
@@ -365,8 +370,8 @@ export default function ReportsScreen(props: ExtraProps) {
                                     <button type="button" onClick={() => closeChooser(key)} className="text-xs px-1.5 py-1" style={{ color: '#5a5a6a' }}>✕</button>
                                   </div>
                                 ) : (
-                                  <button type="button" onClick={() => openChooser(key)} className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }} title="Mark as remediated">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                  <button type="button" onClick={() => openChooser(key)} className="text-xs font-semibold px-2.5 py-1 rounded-xl shrink-0 transition-colors" style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }} title="Choose an outcome for this student">
+                                    Retaught?
                                   </button>
                                 )}
                               </div>
@@ -405,7 +410,7 @@ export default function ReportsScreen(props: ExtraProps) {
                     <div className={cls.absent.length > 0 ? 'mb-3' : ''}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
-                        <p className="text-xs font-bold text-yellow-400 uppercase tracking-wide">Worth a Check-In</p>
+                        <p className="text-xs font-bold text-yellow-400 uppercase tracking-wide">Almost</p>
                       </div>
                       <div className="flex flex-col gap-1">
                         {cls.checkIn.map((s: ReportStudent) => {
@@ -436,8 +441,8 @@ export default function ReportsScreen(props: ExtraProps) {
                                     <button type="button" onClick={() => closeChooser(key)} className="text-xs px-1.5 py-1" style={{ color: '#5a5a6a' }}>✕</button>
                                   </div>
                                 ) : (
-                                  <button type="button" onClick={() => openChooser(key)} className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15' }} title="Mark as checked in">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                  <button type="button" onClick={() => openChooser(key)} className="text-xs font-semibold px-2.5 py-1 rounded-xl shrink-0 transition-colors" style={{ background: 'rgba(250,204,21,0.12)', color: '#facc15' }} title="Choose an outcome for this student">
+                                    Checked in?
                                   </button>
                                 )}
                               </div>

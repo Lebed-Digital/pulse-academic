@@ -99,8 +99,8 @@ export default function HistoryScreen(props: ExtraProps) {
                       <p className="text-sm font-semibold leading-tight" style={{ color: '#f0f0f2' }}>{formatStudentName(s.name, nameFormat, historyStudents.map((x: AppStudent) => x.name))}</p>
                       <p className="text-xs" style={{ color: '#5a5a6a' }}>{rows.length} lesson{rows.length !== 1 ? 's' : ''}</p>
                       <div className="flex flex-wrap justify-center gap-1 mt-0.5">
-                        {needsHelp > 0 && <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-red-900/40 text-red-400">{needsHelp} ⚠</span>}
-                        {almost > 0 && <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">{almost} ~</span>}
+                        {needsHelp > 0 && <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-red-900/40 text-red-400" title="Needs Help">{needsHelp} ⚠</span>}
+                        {almost > 0 && <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400" title="Almost">{almost} ~</span>}
                       </div>
                     </button>
                     <button type="button" onClick={() => openProfile(s.id, s.name)} className="text-[10px] text-teal-400 font-semibold mt-0.5 hover:text-teal-300">
@@ -155,9 +155,9 @@ export default function HistoryScreen(props: ExtraProps) {
                       <p className="text-xs mt-0.5" style={{ color: '#5a5a6a' }}>{formatDate(g.date)} · {g.rows.length} student{g.rows.length !== 1 ? 's' : ''}</p>
                     </div>
                     <div className="flex gap-1 flex-wrap justify-end max-w-32">
-                      {gotIt > 0 && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-400">{gotIt} ✓</span>}
-                      {almost > 0 && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400">{almost} ~</span>}
-                      {needsHelp > 0 && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-900/40 text-red-400">{needsHelp} ✗</span>}
+                      {gotIt > 0 && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-400" title="Got It">{gotIt} ✓</span>}
+                      {almost > 0 && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400" title="Almost">{almost} ~</span>}
+                      {needsHelp > 0 && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-900/40 text-red-400" title="Needs Help">{needsHelp} ✗</span>}
                     </div>
                   </button>
                 )

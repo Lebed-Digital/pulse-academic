@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { PlanScreenProps } from '../types'
 import type { WeekSchedule, DayLesson } from '../lib/ai'
 
@@ -30,6 +31,8 @@ interface ExtraProps extends PlanScreenProps {
 }
 
 export default function PlanScreen(props: ExtraProps) {
+  const [moreOptionsFor, setMoreOptionsFor] = useState<string | null>(null)
+  const [moreDayOptionsFor, setMoreDayOptionsFor] = useState<string | null>(null)
   const {
     formatWeek, weekStart, nextWeekStart, planViewWeek, setPlanViewWeek, pendingSchedule, subjectChoices, setSubjectChoices, confirmSubjects, planSaving, setPendingSchedule,
     savedPlan, undoSnapshot, handleUndo, swapSource, setSwapSource, swapSubjectSource, setSwapSubjectSource, DAYS, getDateForDayOffset,
@@ -260,10 +263,22 @@ export default function PlanScreen(props: ExtraProps) {
                               </div>
                             )}
                           </div>
-                          <div className="flex flex-wrap gap-2 mt-2">
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
                             <button type="button" onClick={() => startEdit(dateISO, subj)} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-teal-900/30 transition-colors" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>✏️ Edit</button>
-                            <button type="button" onClick={() => { setExpandedDay(null); handleSwapSubject(dateISO, subj) }} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-amber-900/30 transition-colors" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>⇄ Swap {subj}</button>
                             {!isSkippingThisSubj && (
+                              <button
+                                type="button"
+                                onClick={() => setMoreOptionsFor(cur => cur === `${dateISO}|${subj}` ? null : `${dateISO}|${subj}`)}
+                                className="text-xs font-semibold px-2 py-1.5 hover:text-teal-400 transition-colors"
+                                style={{ color: '#5a5a6a' }}
+                              >
+                                {moreOptionsFor === `${dateISO}|${subj}` ? 'Hide options' : 'More options ▾'}
+                              </button>
+                            )}
+                            {moreOptionsFor === `${dateISO}|${subj}` && !isSkippingThisSubj && (
+                              <button type="button" onClick={() => { setExpandedDay(null); handleSwapSubject(dateISO, subj) }} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-amber-900/30 transition-colors" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>⇄ Swap {subj}</button>
+                            )}
+                            {moreOptionsFor === `${dateISO}|${subj}` && !isSkippingThisSubj && (
                               <button type="button" onClick={() => setSkipConfirmSubject({ dateISO, subject: subj })} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-red-900/30 text-red-400 transition-colors" style={{ background: 'rgba(255,255,255,0.07)' }}>✕ Skip {subj}</button>
                             )}
                             {isSkippingThisSubj && (
@@ -278,10 +293,22 @@ export default function PlanScreen(props: ExtraProps) {
                         </div>
                       )
                     })}
-                    <div className="flex flex-wrap gap-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                      <button type="button" onClick={() => handleSwap(dateISO)} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-amber-900/30 transition-colors" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>⇄ Swap entire day</button>
-                      {subjects.length > 0 && <button type="button" onClick={() => copyToNext(dateISO)} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-blue-900/30 transition-colors" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>→ Copy to next day</button>}
-                      {subjects.length > 0 && skipConfirmDay !== dateISO && (
+                    <div className="flex flex-wrap items-center gap-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                      {skipConfirmDay !== dateISO && (
+                        <button
+                          type="button"
+                          onClick={() => setMoreDayOptionsFor(cur => cur === dateISO ? null : dateISO)}
+                          className="text-xs font-semibold px-2 py-1.5 hover:text-teal-400 transition-colors"
+                          style={{ color: '#5a5a6a' }}
+                        >
+                          {moreDayOptionsFor === dateISO ? 'Hide day options' : 'More day options ▾'}
+                        </button>
+                      )}
+                      {moreDayOptionsFor === dateISO && skipConfirmDay !== dateISO && (
+                        <button type="button" onClick={() => handleSwap(dateISO)} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-amber-900/30 transition-colors" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>⇄ Swap entire day</button>
+                      )}
+                      {moreDayOptionsFor === dateISO && subjects.length > 0 && skipConfirmDay !== dateISO && <button type="button" onClick={() => copyToNext(dateISO)} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-blue-900/30 transition-colors" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>→ Copy to next day</button>}
+                      {moreDayOptionsFor === dateISO && subjects.length > 0 && skipConfirmDay !== dateISO && (
                         <button type="button" onClick={() => setSkipConfirmDay(dateISO)} className="text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-red-900/30 text-red-400 transition-colors" style={{ background: 'rgba(255,255,255,0.07)' }}>✕ Skip entire day</button>
                       )}
                       {subjects.length > 0 && skipConfirmDay === dateISO && (

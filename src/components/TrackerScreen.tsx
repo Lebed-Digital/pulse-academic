@@ -87,12 +87,15 @@ export default function TrackerScreen(props: TrackerScreenProps) {
           ) : (
             <div className="w-full max-w-2xl mx-auto">
               <div className="mb-3 px-1">
-                <p className="text-xs font-semibold" style={{ color: '#5a5a6a' }}>
+                <p className="text-xs font-semibold" style={{ color: '#8b8b9a' }}>
+                  Start here: name today's lesson and tap Start, then tap each student as you check their understanding.
+                </p>
+                <p className="text-xs mt-1" style={{ color: '#5a5a6a' }}>
                   No lesson plan uploaded for this week.{' '}
                   <button type="button" onClick={onGoToPlan} className="underline hover:text-teal-400 transition-colors" style={{ color: '#5a5a6a' }}>
                     Upload one in Plan
                   </button>
-                  {' '}to get AI exit tickets and smarter tracking. You can still track below.
+                  {' '}for a full week schedule and exit ticket ideas. You can still track below without one.
                 </p>
               </div>
               <div className="flex gap-2">

@@ -110,7 +110,7 @@ export default function SetupScreen({ userId, onDone }: Props) {
         {step === 'classes' ? (
           <>
             <h2 className="text-base font-bold mb-1" style={{ color: '#f0f0f2' }}>Your classes</h2>
-            <p className="text-xs mb-4" style={{ color: '#5a5a6a' }}>Add up to {MAX_CLASSES} classes. You can edit these later in Settings.</p>
+            <p className="text-xs mb-4" style={{ color: '#5a5a6a' }}>Add up to {MAX_CLASSES} classes. You can edit these later in Roster.</p>
 
             <div className="flex flex-col gap-3 mb-4">
               {classDrafts.map((cls, i) => (
