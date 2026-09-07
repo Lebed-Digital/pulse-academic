@@ -27,6 +27,10 @@ export default function ResetPasswordScreen({ onDone }: Props) {
     try {
       const { error: err } = await supabase.auth.updateUser({ password })
       if (err) throw err
+      // The recovery link signs the teacher in before they choose a password.
+      // Drop that session so the new password is actually exercised at login,
+      // and so an abandoned reset can't leave an authenticated session behind.
+      await supabase.auth.signOut()
       setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -49,13 +53,13 @@ export default function ResetPasswordScreen({ onDone }: Props) {
           <div className="rounded-2xl px-6 py-8 text-center" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)' }}>
             <p className="text-2xl mb-3">✅</p>
             <h2 className="text-base font-bold mb-2" style={{ color: '#f0f0f2' }}>Password updated</h2>
-            <p className="text-sm" style={{ color: '#8b8b9a' }}>Your new password is saved. You're all set.</p>
+            <p className="text-sm" style={{ color: '#8b8b9a' }}>Your new password is saved. Sign in with it to continue.</p>
             <button
               type="button"
               onClick={onDone}
               className="mt-5 w-full py-3 bg-teal-500 text-white text-sm font-semibold rounded-2xl"
             >
-              Continue to app
+              Go to sign in
             </button>
           </div>
         ) : (

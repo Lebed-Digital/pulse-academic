@@ -45,6 +45,13 @@ export default function Root() {
       // listener even though nothing actually changed. Don't bounce a teacher
       // out of an in-progress Setup screen for the same still-signed-in user.
       setState(cur => {
+        // INITIAL_SESSION is replayed to every newly registered subscriber with
+        // the recovery session already saved, and it always beats the
+        // PASSWORD_RECOVERY event above (which the SDK defers via setTimeout 0).
+        // Without this guard it overwrites 'recovery' with 'app' microseconds
+        // after the lazy initializer sets it, so the teacher lands inside the
+        // app already signed in and never gets to choose a new password.
+        if (cur === 'recovery') return cur
         if (cur === 'setup' && session) return cur
         return session ? 'app' : 'auth'
       })
@@ -71,7 +78,7 @@ export default function Root() {
   }
 
   if (state === 'recovery') {
-    return <ResetPasswordScreen onDone={() => setState(session ? 'app' : 'auth')} />
+    return <ResetPasswordScreen onDone={() => setState('auth')} />
   }
 
   if (state === 'setup' && session) {
