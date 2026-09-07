@@ -1,5 +1,53 @@
 # Pulse Academic Handoff
 
+## Session: September 7, 2026 (latest) — Password recovery audit, INITIAL_SESSION fix, CLOSED and verified in production
+
+Full end-to-end audit of password recovery. **The recovery-state bug is closed**: fixed, merged, deployed, and manually verified working in production by Greg. Two follow-ups remain open and are NOT done (see below).
+
+### The bug, and why two prior fixes missed it
+
+PR #1 and PR #2 were both correct and both remain in place. Neither fixed the actual failure, because neither guarded the right caller.
+
+`onAuthStateChange` replays `INITIAL_SESSION` to every newly registered subscriber (`GoTrueClient._emitInitialSession`). By the time it fires, `_saveSession()` has already persisted the session minted by the recovery link, so it arrives **with a valid session**, and `Root.tsx`'s fallthrough mapped it straight to `'app'`. It also reliably wins the race: `PASSWORD_RECOVERY` is deferred behind a `setTimeout(0)` inside `_initialize()`, while `INITIAL_SESSION` is gated only on an already-resolved `initializePromise`. So PR #2's lazy initializer set `'recovery'` and `INITIAL_SESSION` overwrote it microseconds later. The teacher landed inside the app, already signed in, never seeing "Set a new password".
+
+Worth remembering: **the recovery link is a full login.** That is what made this bug silent rather than an error.
+
+### What the audit ruled OUT (do not re-investigate these)
+
+Verified against production auth logs, live DNS, and raw email headers:
+
+- **Server side was always healthy.** `/recover` 200 → `/verify` 303 → `action: login, login_method: implicit` → `/user` 200. The link always worked.
+- **SPF, DKIM, and DMARC all pass.** Headers show `dkim=pass` (both `pulseacademic.com` and `amazonses.com`), `spf=pass`, `dmarc=pass`. Return-Path is correctly delegated to Resend's subdomain. Authentication is NOT the problem.
+- **Resend click tracking is disabled.** The href in the delivered email is the raw Supabase verify URL, unmodified. No link rewriting is occurring, so it is not breaking anything.
+- **`redirectTo` is correct** (`https://app.pulseacademic.com`), and Supabase config is correct.
+- **PR #2's synchronous hash read is sound.** `_initialize()` is async and the hash strip sits behind an awaited `_getUser()` network call, so the lazy initializer comfortably wins that particular race. Creating the client at module-import time does NOT strip the hash first.
+
+### The fix (PR #3, merged)
+
+- **`src/Root.tsx`** — guard `'recovery'` in the `onAuthStateChange` fallthrough, exactly as `'setup'` already is. Recovery no longer depends on auth event ordering at all.
+- **`src/ResetPasswordScreen.tsx`** — `signOut()` after a successful `updateUser({ password })`, so the new password is actually exercised at login and an abandoned reset cannot leave a live authenticated session behind.
+- **Copy/routing follow-through** — success card now reads "Go to sign in", and `onDone` routes to `'auth'` since the session is intentionally gone. The old `session ? 'app' : 'auth'` would have read a stale session after sign-out.
+
+Squash-merged as **`f7ed6b9b6c963f417ab1b500c3c1db226a06d009`**, deployment **`dpl_6CM5jZaPA1A5851wqGECdjjRUaPq`**, `state: READY`, `target: production`. Confirmed `app.pulseacademic.com` serves that build by fetching the live bundle and finding both changes in it, not just by trusting deployment status. `tsc -b`, `npm run lint`, `npm run build` all clean; lint baseline unchanged at the same 8 pre-existing problems.
+
+**Greg manually verified the full reset flow end to end in production. This bug is closed.**
+
+### Still open (do NOT treat as done)
+
+1. **Gmail shows a red "This message might be dangerous" warning on every reset email.** Not an auth failure (see ruled-out list). Driven by: a raw `supabase.co` credential link inside an email branded as a different company, a brand-new sending domain with near-zero reputation, `p=none` DMARC, and very thin email content. Planned fix is the `/reset` interception page, plus moving DMARC to `p=quarantine` and filling out the template.
+2. **Email scanners are consuming one-time recovery links.** Confirmed in production logs, not hypothetical: at 22:12:10 a `/verify` returned `"One-time token not found" / 403 Email link is invalid or has expired`, immediately followed by a second `/verify` 303 in the same second. Same `/reset` page addresses this, since a scanner would then fetch a plain page instead of burning the token. Expect intermittent "link doesn't work" reports until this ships.
+3. **PKCE migration** — recommended after `/reset`, and cheap once that route exists. The implicit flow puts real credentials in the URL fragment and is the root cause of this entire class of bug. Supabase treats it as legacy. Clerk was considered and is NOT recommended here: it is a large migration for a one-line bug, and Supabase with PKCE is the better fit for a single-role teacher app.
+
+A written plan for `/reset` is prepared and awaiting Greg's approval. **Nothing else about auth behavior should change until that plan is approved.**
+
+### Explicitly NOT changed this session
+
+SMTP credentials, DNS records, Supabase auth settings, email templates, redirect URLs, PKCE flow type, and the `/reset` page itself were all left untouched by deliberate instruction. The only production change was the two-file PR #3 above.
+
+**Supersedes the stale "Forgot Password email did not arrive" item in the session below** — email delivery via Resend now works; the failures were the client-side state bug plus the two open email items above.
+
+---
+
 ## Session: September 7, 2026 (later) — Product clarity audit, UX simplification pass, merged to main
 
 This session picked up right after the relaunch evaluation session below (same day). Read this section in full before doing anything; the audit and both rounds of fixes it produced are done, reviewed, and now merged and deployed. **Signup is still intentionally paused** — do not reopen it. See "Next session task" at the bottom.
