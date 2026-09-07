@@ -328,7 +328,7 @@ export default function ReportsScreen(props: ExtraProps) {
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-4 mb-5">
+          <div id="pulse-print-area" className="flex flex-col gap-4 mb-5">
             {reportView === 'groups' ? reportData.map((cls: ReportClass) => renderGroupsCard(cls)) : reportData.map((cls: ReportClass) => {
 
               return (
@@ -483,9 +483,14 @@ export default function ReportsScreen(props: ExtraProps) {
             })}
           </div>
 
-          <button type="button" onClick={copyReport} className="w-full py-3 bg-teal-500 text-white text-sm font-semibold rounded-2xl active:scale-95 transition-transform">
-            {reportCopied ? '✓ Copied to clipboard' : 'Copy report'}
-          </button>
+          <div className="flex gap-2">
+            <button type="button" onClick={copyReport} className="flex-1 py-3 bg-teal-500 text-white text-sm font-semibold rounded-2xl active:scale-95 transition-transform">
+              {reportCopied ? '✓ Copied to clipboard' : 'Copy report'}
+            </button>
+            <button type="button" onClick={() => window.print()} className="flex-1 py-3 text-sm font-semibold rounded-2xl active:scale-95 transition-transform" style={{ background: 'rgba(255,255,255,0.07)', color: '#f0f0f2' }}>
+              Print / Save as PDF
+            </button>
+          </div>
         </>
       )}
     </main>

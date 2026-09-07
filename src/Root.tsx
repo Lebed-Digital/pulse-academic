@@ -22,9 +22,15 @@ export default function Root() {
       setSession(session)
       if (event === 'PASSWORD_RECOVERY') {
         setState('recovery')
-      } else {
-        setState(session ? 'app' : 'auth')
+        return
       }
+      // Supabase re-validates the session (e.g. on tab refocus), firing this
+      // listener even though nothing actually changed. Don't bounce a teacher
+      // out of an in-progress Setup screen for the same still-signed-in user.
+      setState(cur => {
+        if (cur === 'setup' && session) return cur
+        return session ? 'app' : 'auth'
+      })
     })
 
     return () => subscription.unsubscribe()
