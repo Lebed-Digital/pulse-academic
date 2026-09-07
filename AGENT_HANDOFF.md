@@ -1,5 +1,86 @@
 # Pulse Academic Handoff
 
+## Session: September 7, 2026 (END OF DAY ROLLUP) — Read this first
+
+Consolidated status for everything completed on September 7, 2026. The entries below this one are the individual session logs and remain accurate; read them only if you need detail this summary does not give you.
+
+**Bottom line: the app is technically working. Password recovery is fixed and verified in production. Signup/relaunch is still intentionally paused.**
+
+### What changed today
+
+**Infrastructure and AI**
+- **Supabase project restored and verified healthy.** Project `zhkgdbjhcignpcspllso` ("Pulse-academic") had gone `INACTIVE` from disuse and was reactivated. All 8 tables intact, RLS verified owner-scoped on every table, no schema drift.
+- **AI layer migrated from the retired Groq model to OpenAI** (commit `1bf14dd`). Groq had silently retired `llama-3.3-70b-versatile`, breaking every AI feature at once since all four share one code path. Root cause was a stale model string, not secrets or deployment.
+- **New OpenAI edge-function path is live and verified.** `supabase/functions/openai-proxy/index.ts`, deployed and `ACTIVE`, reading `OPENAI_API_KEY` from edge-function secrets. Client layer is `src/lib/ai.ts` (replaced the deleted `src/lib/groq.ts`). Model `gpt-5.6-luna`, `reasoning_effort: "none"`, confirmed honored via `reasoning_tokens === 0` on every call.
+- **All four AI functions smoke-tested successfully:** 23/23 focused automated checks passed against the live deployed proxy (exit tickets, mini-lesson suggestions, lesson-plan parsing, student-name parsing), all returning schema-valid JSON.
+
+**Product / UX**
+- **Product clarity and UX simplification work completed and merged** (`bf67bc7` and `98d8fa6`, merged as `6066428`, deployment `dpl_4dVX8KTmW8EAPspiFgZu5qD8AYzF`). Status vocabulary standardized, Reports Groups view defaulted when students are flagged, reteach affordances labeled, Plan power-tooling collapsed behind progressive disclosure.
+- **Setup tab-switch state-loss bug fixed.** A session-refresh auth event bounced the teacher out of `'setup'`, unmounting the screen and wiping the form. Reproduced against pre-fix code with a real `refreshSession()` call, then confirmed fixed.
+- **Class-name / subject setup copy clarified.** Added explicit "Class name" and "Subject" labels; the two were genuinely ambiguous before. No schema change, the columns were always separate.
+- **Reports got Print / Save as PDF.** A `#pulse-print-area` marker plus one `@media print` rule in `index.css`. No library added.
+
+**Email delivery**
+- **Forgot-password email delivery fixed by configuring Resend as custom SMTP.** Before this, `/recover` returned 500 with `550 "This API key is not authorized to send emails from pulseacademic.com"`.
+- **`pulseacademic.com` verified in Resend.** Sender is **Pulse Academic <noreply@pulseacademic.com>**.
+- **SPF, DKIM, and DMARC confirmed passing**, read from real delivered-message headers: `dkim=pass` on both `pulseacademic.com` and `amazonses.com`, `spf=pass`, `dmarc=pass`. Return-Path correctly delegated to Resend's subdomain. Email authentication is NOT a problem and does not need re-investigating.
+
+**Password recovery (the bulk of the day)**
+- **Multiple client-side race bugs diagnosed and fixed across PRs #1, #2, #3.** All three are in production and all three are needed:
+  - **PR #1** (`7e47629`) guarded `getSession()` from clobbering an in-progress `'recovery'` state.
+  - **PR #2** (`719c7a1`) reads the recovery hash synchronously in the lazy initializer, because `PASSWORD_RECOVERY` fires before React subscribes and is lost.
+  - **PR #3** (`f7ed6b9`, deployment `dpl_6CM5jZaPA1A5851wqGECdjjRUaPq`) is the one that actually fixed it: `onAuthStateChange` replays `INITIAL_SESSION` to every new subscriber with the recovery session already saved, and it reliably beats the `setTimeout(0)`-deferred `PASSWORD_RECOVERY`. The fallthrough mapped it to `'app'`, so the lazy initializer set `'recovery'` and `INITIAL_SESSION` overwrote it microseconds later. Guarding `'recovery'` in that fallthrough fixed it. PR #3 also signs the user out after a successful `updateUser`, since the recovery link is a full login.
+- **Production password recovery manually verified working end to end by Greg.** Confirmed server-side in auth logs: `/recover` 200, `/verify` 303, `PUT /user` 200 at 22:54.
+- **Reset emails now use a branded Pulse Academic template**, replacing the three-word default that looked like phishing.
+- **PR #4 (`3a81ffa`, deployment `dpl_FN9hyhqyyandFKvZHcHXvoFUAQU2`) added the `/reset` interception flow.** Adds a minimal `vercel.json` rewrite, one `isResetPage` condition in `Root.tsx` (no router), and `detectSessionInUrl: false` scoped to `/reset` only.
+- **`/reset` is live in production and does not consume the recovery token on page load.** Verified two independent ways: a real headless Chrome loading `/reset?token_hash=...` and waiting produced zero requests to the Supabase auth host, and the auth logs show no `/verify` entry for that probe. A control run on the root path (detection still enabled) DID fire `GET /user` on load, proving the probe would catch a regression.
+- **Reset links now use `token_hash` on `app.pulseacademic.com`** instead of exposing the raw Supabase confirmation URL. This matters mechanically: `/verify` is what spends the single-use token and it used to run server-side during the redirect, before the browser loaded anything. The template now emits the token hash and the page calls `verifyOtp()` inside the submit handler.
+- **Real production verification confirmed the new reset flow still works.** Auth logs at 23:11 show `/recover` 200 followed by `/verify` **200** (a `verifyOtp` POST from the new page), distinct from the 303 redirect pattern of the old flow.
+- **Gmail's large red danger warning disappeared in the latest test email** (Greg's own observation on the delivered message; not independently re-verified here).
+- **Scanner-consumption risk reduced** by moving token redemption behind explicit user interaction. Note this is a large reduction, not a guarantee: aggressive scanners that execute JavaScript could still trigger it.
+
+### Intentionally deferred (do NOT treat as forgotten or as bugs)
+
+- **DMARC intentionally left at `p=none`.** Moving to `p=quarantine` is a later decision.
+- **PKCE intentionally deferred to a later task.** The implicit flow puts real credentials in the URL fragment and is the root cause of this whole bug class; Supabase treats it as legacy. It is cheap now that `/reset` exists. Clerk was considered and is NOT recommended: a large migration for problems Supabase-with-PKCE already solves for a single-role teacher app.
+- **Groq rollback path still exists and was intentionally left in place** (`groq-proxy` edge function and `GROQ_API_KEY` secret). Do not remove yet.
+- **Duplicate React key warning in `ReportsScreen.tsx`** remains open and nonblocking.
+- **Possible smoke-test accounts may still remain in production** from the day's signup and recovery testing. Worth auditing before public relaunch.
+- **Marketing / relaunch work is still not complete.** The marketing site (`pulse-academic-website`, separate repo) still has stale exit-ticket-heavy positioning. In-app copy was rebalanced; the site was not touched.
+- **Signup/relaunch should still be considered PAUSED until explicitly resumed.** Do not reopen it as a side effect of any other work.
+
+### Next session
+
+Priorities, in order:
+
+1. **Audit class lifecycle and account-maintenance features before public relaunch.** Walk each one and establish what actually exists today versus what is missing:
+   - create class
+   - rename / edit class
+   - switch active class
+   - add / remove students
+   - archive class
+   - restore archived class
+   - permanently delete class
+   - **verify what happens to associated data in each case**: lessons, reports, mastery/status history, reteach data, check-ins
+   - **Identify only the actual gaps. Do not rebuild features that already exist.** Read the code first and confirm before proposing work.
+2. **Review whether PKCE should be the next auth hardening step.** See the deferred note above; `/reset` already did the groundwork.
+3. **Review marketing site and relaunch positioning** after the product-maintenance gaps are settled, not before.
+
+### Known identifiers
+
+| Item | Value |
+|---|---|
+| Supabase project | `zhkgdbjhcignpcspllso` |
+| Vercel project | `prj_PkMDvw81pt7S4yTkGff9zozedpDc` |
+| PR #1 | `7e47629945d4391f873bc96773133c3a09d55cf3` |
+| PR #2 | `719c7a1bca8ea50996d4da7d3b12222645bb6817` |
+| PR #3 | `f7ed6b9b6c963f417ab1b500c3c1db226a06d009` / `dpl_6CM5jZaPA1A5851wqGECdjjRUaPq` |
+| PR #4 | `3a81ffa5824b4c5f473c4c34e6ae2418baf73a14` / `dpl_FN9hyhqyyandFKvZHcHXvoFUAQU2` |
+| UX pass | `6066428d71ba64fd861c850abab22fcbb1608143` / `dpl_4dVX8KTmW8EAPspiFgZu5qD8AYzF` |
+| AI migration | `1bf14ddc0d0e8f483793392e60522c804a2bbeba` |
+
+---
+
 ## Session: September 7, 2026 (latest) — Password recovery audit, INITIAL_SESSION fix, CLOSED and verified in production
 
 Full end-to-end audit of password recovery. **The recovery-state bug is closed**: fixed, merged, deployed, and manually verified working in production by Greg. Two follow-ups remain open and are NOT done (see below).
