@@ -110,7 +110,7 @@ export default function SetupScreen({ userId, onDone }: Props) {
         {step === 'classes' ? (
           <>
             <h2 className="text-base font-bold mb-1" style={{ color: '#f0f0f2' }}>Your classes</h2>
-            <p className="text-xs mb-4" style={{ color: '#5a5a6a' }}>Add up to {MAX_CLASSES} classes. You can edit these later in Settings.</p>
+            <p className="text-xs mb-4" style={{ color: '#5a5a6a' }}>Add up to {MAX_CLASSES} classes. Give each one a name you'll recognize, then pick its subject separately. You can edit these later in Roster.</p>
 
             <div className="flex flex-col gap-3 mb-4">
               {classDrafts.map((cls, i) => (
@@ -121,26 +121,32 @@ export default function SetupScreen({ userId, onDone }: Props) {
                       <button type="button" onClick={() => removeClass(i)} className="text-xs hover:text-red-400 transition-colors" style={{ color: '#3a3a4a' }}>Remove</button>
                     )}
                   </div>
-                  <input
-                    type="text"
-                    value={cls.name}
-                    onChange={e => updateClass(i, 'name', e.target.value)}
-                    placeholder="e.g. Period 1, AM, Blue Group"
-                    className="w-full text-sm rounded-xl px-3 py-2 outline-none border focus:border-teal-500"
-                    style={inputStyle}
-                  />
-                  <div className="flex flex-wrap gap-1.5">
-                    {SUBJECTS.map(subj => (
-                      <button
-                        key={subj}
-                        type="button"
-                        onClick={() => updateClass(i, 'subject', subj)}
-                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${cls.subject === subj ? 'bg-teal-500 text-white' : 'hover:brightness-110'}`}
-                        style={cls.subject !== subj ? { background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' } : {}}
-                      >
-                        {subj}
-                      </button>
-                    ))}
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#5a5a6a' }}>Class name</p>
+                    <input
+                      type="text"
+                      value={cls.name}
+                      onChange={e => updateClass(i, 'name', e.target.value)}
+                      placeholder="e.g. Period 1, Mrs. Smith Homeroom, Blue Group"
+                      className="w-full text-sm rounded-xl px-3 py-2 outline-none border focus:border-teal-500"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#5a5a6a' }}>Subject</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SUBJECTS.map(subj => (
+                        <button
+                          key={subj}
+                          type="button"
+                          onClick={() => updateClass(i, 'subject', subj)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${cls.subject === subj ? 'bg-teal-500 text-white' : 'hover:brightness-110'}`}
+                          style={cls.subject !== subj ? { background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' } : {}}
+                        >
+                          {subj}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}

@@ -410,7 +410,9 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
   const [reportView, setReportViewState] = useState<'list' | 'groups'>(
     () => localStorage.getItem('reportView') === 'groups' ? 'groups' : 'list'
   )
+  const [reportViewChosen, setReportViewChosen] = useState(() => localStorage.getItem('reportView') !== null)
   function setReportView(view: 'list' | 'groups') {
+    setReportViewChosen(true)
     setReportViewState(view)
     localStorage.setItem('reportView', view)
   }
@@ -494,7 +496,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
     for (const cls of reportData) {
       lines.push(`── ${cls.className} ──`)
       if (cls.needsSupport.length > 0) {
-        lines.push('Needs Support:')
+        lines.push('Needs Help:')
         for (const s of cls.needsSupport) {
           const rows = s.lessons.filter(l => l.status === 'needs-help')
           const topics = [...new Set(rows.map(l => l.title))].join(', ')
@@ -522,7 +524,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
         }
       }
       if (cls.checkIn.length > 0) {
-        lines.push('Worth a Check-In:')
+        lines.push('Almost:')
         for (const s of cls.checkIn) {
           const topics = [...new Set(s.lessons.map(l => l.title))].join(', ')
           const retaught = Math.max(0, ...s.lessons.map(l => l.retaught_count ?? 0))
@@ -570,7 +572,7 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
   }
 
   async function copyReport() {
-    await navigator.clipboard.writeText(reportView === 'groups' ? buildGroupsText() : buildReportText())
+    await navigator.clipboard.writeText(effectiveReportView === 'groups' ? buildGroupsText() : buildReportText())
     setReportCopied(true)
     setTimeout(() => setReportCopied(false), 2500)
   }
@@ -1508,6 +1510,12 @@ async function handleSuggestExitTicket() {
     setScreen('reports')
   }
 
+  // If a teacher has never explicitly picked List or Groups, default them into
+  // Groups (the reteach-ready view) whenever there are flagged students to show,
+  // instead of the flat List. A real tap on either chip (setReportView) always wins.
+  const effectiveReportView: 'list' | 'groups' =
+    !reportViewChosen && reportData.length > 0 ? 'groups' : reportView
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (dataLoading) {
@@ -1534,7 +1542,7 @@ async function handleSuggestExitTicket() {
     historyLoading, selectedStudentId, historyStudents, studentHistoryRows, STATUS_PILL, STATUS_LABEL,
     filteredHistory, selectedLesson, lessonDetail, lessonGroups,
     reportClassId, setReportClassId, reportRange, setReportRange, reportCustomStart, setReportCustomStart, reportCustomEnd,
-    setReportCustomEnd, reportData, copyReport, reportCopied, dismissCheckin, clearLesson, reportView, setReportView,
+    setReportCustomEnd, reportData, copyReport, reportCopied, dismissCheckin, clearLesson, reportView: effectiveReportView, setReportView,
     rosterAddingClass, setRosterAddingClass, rosterNewClassName, setRosterNewClassName, rosterAddClass, rosterNewClassSubject,
     setRosterNewClassSubject, SUBJECTS, rosterSaving, studentsByClass, rosterRenaming, rosterRenameValue, setRosterRenameValue, rosterRenameClass,
     setRosterRenaming, rosterConfirmRemove, rosterRemoveStudent, setRosterConfirmRemove, rosterNewStudentName, setRosterNewStudentName,

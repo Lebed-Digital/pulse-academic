@@ -15,3 +15,27 @@ body,
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #pulse-print-area,
+  #pulse-print-area * {
+    visibility: visible;
+  }
+  #pulse-print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  #pulse-print-area button {
+    display: none !important;
+  }
+  #pulse-print-area * {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+}
