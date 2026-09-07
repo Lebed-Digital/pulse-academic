@@ -8,8 +8,22 @@ import ResetPasswordScreen from './ResetPasswordScreen.tsx'
 
 type AppState = 'loading' | 'auth' | 'setup' | 'app' | 'demo' | 'recovery'
 
+// Supabase's GoTrue client fires PASSWORD_RECOVERY from a setTimeout(0)
+// queued at module load time (inside the client constructor's own
+// initialize() call), before this component's useEffect has run and
+// subscribed via onAuthStateChange. That event is emitted to zero
+// listeners and lost, so the recovery flow can never be detected reactively
+// on first load. Read it synchronously from the URL hash instead, the same
+// way the SDK itself decides callbackUrlType internally, before it has a
+// chance to strip the hash.
+function isRecoveryCallbackUrl(): boolean {
+  if (typeof window === 'undefined' || !window.location.hash) return false
+  const params = new URLSearchParams(window.location.hash.slice(1))
+  return params.get('type') === 'recovery' && Boolean(params.get('access_token'))
+}
+
 export default function Root() {
-  const [state, setState] = useState<AppState>('loading')
+  const [state, setState] = useState<AppState>(() => (isRecoveryCallbackUrl() ? 'recovery' : 'loading'))
   const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
