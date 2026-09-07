@@ -25,8 +25,32 @@ export default function ResetPasswordScreen({ onDone }: Props) {
     }
     setLoading(true)
     try {
+      // Redeem the recovery token here, inside the click handler, and nowhere
+      // else. On /reset the emailed link carries only a token_hash and the
+      // client is built with detectSessionInUrl disabled, so no session exists
+      // until this line runs. An email scanner that merely fetches the page
+      // never reaches it, which is what stops the single-use link being burned
+      // before the teacher opens it.
+      const tokenHash = new URLSearchParams(window.location.search).get('token_hash')
+      if (tokenHash) {
+        const { error: verifyErr } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        })
+        if (verifyErr) {
+          setError('This reset link has expired or has already been used. Request a new one from the sign in screen.')
+          return
+        }
+      }
+
       const { error: err } = await supabase.auth.updateUser({ password })
-      if (err) throw err
+      if (err) {
+        // No token_hash and no recovery session: the link was opened without
+        // credentials, or they have already been spent. Say so plainly rather
+        // than surfacing a raw auth API error.
+        setError('This reset link has expired or has already been used. Request a new one from the sign in screen.')
+        return
+      }
       // The recovery link signs the teacher in before they choose a password.
       // Drop that session so the new password is actually exercised at login,
       // and so an abandoned reset can't leave an authenticated session behind.

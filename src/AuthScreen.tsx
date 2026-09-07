@@ -25,7 +25,7 @@ export default function AuthScreen({ onDemo }: Props) {
     setLoading(true)
     try {
       const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://app.pulseacademic.com',
+        redirectTo: 'https://app.pulseacademic.com/reset',
       })
       if (err) throw err
       setResetSent(true)
