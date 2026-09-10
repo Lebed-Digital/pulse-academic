@@ -123,6 +123,13 @@ export interface RosterScreenProps {
   rosterNewClassSubject: string
   setRosterNewClassSubject: (val: string) => void
   rosterAddClass: () => void
+  rosterDeletingClass: string | null
+  setRosterDeletingClass: (id: string | null) => void
+  rosterDeleteConfirmText: string
+  setRosterDeleteConfirmText: (val: string) => void
+  rosterDeleteError: string
+  rosterDeleteClass: (id: string) => void
+  rosterCancelDeleteClass: () => void
   rosterSaving: boolean
   expandedRosterClassId: string | null
   setExpandedRosterClassId: (id: string | null) => void

@@ -21,8 +21,13 @@ export default function RosterScreen(props: ExtraProps) {
     setScreen, setSelectedStudentId, setHistoryClassId,
     rosterRenamingStudent, setRosterRenamingStudent, rosterStudentRenameValue, setRosterStudentRenameValue, rosterRenameStudent,
     expandedRosterClassId, setExpandedRosterClassId,
+    rosterDeletingClass, setRosterDeletingClass, rosterDeleteConfirmText, setRosterDeleteConfirmText,
+    rosterDeleteError, rosterDeleteClass, rosterCancelDeleteClass,
     nameFormat, cycleNameFormat, showSkills, toggleShowSkills
   } = props
+
+  const deletingClass = classes.find((c: AppClass) => c.id === rosterDeletingClass) ?? null
+  const deleteConfirmed = !!deletingClass && rosterDeleteConfirmText.trim() === deletingClass.name.trim()
 
   const surface = { background: '#161618', border: '1px solid rgba(255,255,255,0.07)' }
   const inputStyle = { background: '#1e1e22', borderColor: 'rgba(255,255,255,0.1)', color: '#f0f0f2' }
@@ -225,6 +230,17 @@ export default function RosterScreen(props: ExtraProps) {
                         )}
                       </div>
                     </div>
+
+                    <div className="mt-4 pt-3 flex justify-end" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setRosterDeletingClass(cls.id); setRosterDeleteConfirmText('') }}
+                        className="text-xs transition-colors hover:text-red-400"
+                        style={{ color: '#5a5a6a' }}
+                      >
+                        Delete class
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -254,6 +270,56 @@ export default function RosterScreen(props: ExtraProps) {
               <button type="button" onClick={() => { setRosterCopySourceClassId(null); setRosterCopyTargetClassId('') }} className="px-4 py-2 text-sm font-semibold rounded-xl" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>Cancel</button>
               <button type="button" onClick={rosterCopyFromClass} disabled={!rosterCopyTargetClassId || rosterSaving} className="px-4 py-2 bg-teal-500 text-white text-sm font-semibold rounded-xl disabled:opacity-40">
                 {rosterSaving ? 'Copying…' : 'Copy students'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete class modal */}
+      {deletingClass && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="rounded-2xl shadow-xl w-full max-w-md p-5 flex flex-col gap-4" style={{ background: '#161618', border: '1px solid rgba(239,68,68,0.25)' }}>
+            <h3 className="font-bold" style={{ color: '#f0f0f2' }}>Delete {deletingClass.name}?</h3>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm" style={{ color: '#8b8b9a' }}>
+                This is permanent and cannot be undone. Deleting this class also deletes everything recorded for it:
+              </p>
+              <ul className="text-sm flex flex-col gap-1 pl-4" style={{ color: '#8b8b9a' }}>
+                <li>Lessons for this class</li>
+                <li>Check-ins, notes, and status history</li>
+                <li>Reteach history and small group data</li>
+                <li>Skills and mastery tracking for this class</li>
+              </ul>
+              <p className="text-sm" style={{ color: '#8b8b9a' }}>
+                Your students are not deleted. They stay in your other classes, along with that work.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold" style={{ color: '#8b8b9a' }}>
+                Type <span style={{ color: '#f0f0f2' }}>{deletingClass.name}</span> to confirm
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={rosterDeleteConfirmText}
+                onChange={e => setRosterDeleteConfirmText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && deleteConfirmed && !rosterSaving) rosterDeleteClass(deletingClass.id) }}
+                placeholder={deletingClass.name}
+                className="w-full text-sm rounded-xl px-3 py-2 outline-none border focus:border-red-500"
+                style={inputStyle}
+              />
+            </div>
+            {rosterDeleteError && <p className="text-xs" style={{ color: '#ef4444' }}>{rosterDeleteError}</p>}
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={rosterCancelDeleteClass} className="px-4 py-2 text-sm font-semibold rounded-xl" style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={() => rosterDeleteClass(deletingClass.id)}
+                disabled={!deleteConfirmed || rosterSaving}
+                className="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-xl disabled:opacity-40"
+              >
+                {rosterSaving ? 'Deleting…' : 'Delete permanently'}
               </button>
             </div>
           </div>
