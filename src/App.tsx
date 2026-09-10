@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { parseLessonPlan, suggestExitTickets, parseStudentNames, type DayLesson, type WeekSchedule, type ExitTicket } from './lib/ai'
 import { buildPullGroups } from './lib/groups'
+import { isDeleteConfirmed, classesAfterDelete, nextSelectedClassId, canAddClass, studentsByClassAfterDelete } from './lib/deleteClass'
 import {
   DEMO_CLASSES, DEMO_STUDENTS, DEMO_STUDENT_CLASSES, DEMO_LESSONS, DEMO_CHECKINS,
   type DemoClass, type DemoStudent,
@@ -263,6 +264,9 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
   const [rosterRenamingStudent, setRosterRenamingStudent] = useState<string | null>(null)
   const [rosterStudentRenameValue, setRosterStudentRenameValue] = useState('')
   const [rosterAddingClass, setRosterAddingClass] = useState(false)
+  const [rosterDeletingClass, setRosterDeletingClass] = useState<string | null>(null)
+  const [rosterDeleteConfirmText, setRosterDeleteConfirmText] = useState('')
+  const [rosterDeleteError, setRosterDeleteError] = useState('')
   const [rosterNewClassName, setRosterNewClassName] = useState('')
   const [rosterNewClassSubject, setRosterNewClassSubject] = useState('Math')
   const [rosterSaving, setRosterSaving] = useState(false)
@@ -381,9 +385,55 @@ export default function App({ userId, isDemo = false, onSignOut, onNeedsSetup }:
     setRosterSaving(false)
   }
 
+  function rosterCancelDeleteClass() {
+    setRosterDeletingClass(null)
+    setRosterDeleteConfirmText('')
+    setRosterDeleteError('')
+  }
+
+  async function rosterDeleteClass(classId: string) {
+    const cls = classes.find(c => c.id === classId)
+    if (!cls || !isDeleteConfirmed(rosterDeleteConfirmText, cls.name)) return
+
+    setRosterSaving(true)
+    setRosterDeleteError('')
+
+    // Postgres cascades to student_classes, lessons, checkins, skills and
+    // skill_mastery. Students are intentionally left in place.
+    if (!isDemo) {
+      const { error } = await supabase.from('classes').delete().eq('id', classId)
+      if (error) {
+        setRosterDeleteError('Could not delete the class. Check your connection and try again.')
+        setRosterSaving(false)
+        return
+      }
+    }
+
+    const nextId = nextSelectedClassId(classes, classId, selectedClassId)
+    if (nextId !== selectedClassId) {
+      // Reset lesson context by hand rather than calling switchSubject: there is
+      // no lesson to resume after a delete, and calling it here would defeat the
+      // React Compiler memoization of the memos defined below it.
+      const nextClass = classes.find(c => c.id === nextId)
+      setActiveLesson(null)
+      setStudentStatuses({})
+      setLessonInput('')
+      setExitTickets([]); setActiveExitTicket(null); setShowExitTickets(false)
+      if (nextClass) setActiveSubject(nextClass.subject)
+    }
+    setSelectedClassId(nextId)
+    setClasses(cur => classesAfterDelete(cur, classId))
+    setStudentsByClass(cur => studentsByClassAfterDelete(cur, classId))
+    if (historyClassId === classId) setHistoryClassId(nextId)
+    if (reportClassId === classId) setReportClassId('all')
+    setHistoryVersion(v => v + 1)
+    rosterCancelDeleteClass()
+    setRosterSaving(false)
+  }
+
   async function rosterAddClass() {
     const name = rosterNewClassName.trim()
-    if (!name || classes.length >= 6) return
+    if (!name || !canAddClass(classes)) return
     setRosterSaving(true)
     const display_order = classes.length
     const { data: cls } = await supabase
@@ -1544,6 +1594,8 @@ async function handleSuggestExitTicket() {
     reportClassId, setReportClassId, reportRange, setReportRange, reportCustomStart, setReportCustomStart, reportCustomEnd,
     setReportCustomEnd, reportData, copyReport, reportCopied, dismissCheckin, clearLesson, reportView: effectiveReportView, setReportView,
     rosterAddingClass, setRosterAddingClass, rosterNewClassName, setRosterNewClassName, rosterAddClass, rosterNewClassSubject,
+    rosterDeletingClass, setRosterDeletingClass, rosterDeleteConfirmText, setRosterDeleteConfirmText, rosterDeleteError,
+    rosterDeleteClass, rosterCancelDeleteClass,
     setRosterNewClassSubject, SUBJECTS, rosterSaving, studentsByClass, rosterRenaming, rosterRenameValue, setRosterRenameValue, rosterRenameClass,
     setRosterRenaming, rosterConfirmRemove, rosterRemoveStudent, setRosterConfirmRemove, rosterNewStudentName, setRosterNewStudentName,
     rosterAddStudent, setRosterPasteClassId, setRosterPasteText, setRosterCopySourceClassId, setRosterCopyTargetClassId, rosterCopySourceClassId,
