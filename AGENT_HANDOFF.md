@@ -1,6 +1,48 @@
 # Pulse Academic Handoff
 
-## Session: September 7, 2026 (END OF DAY ROLLUP) — Read this first
+## Session: September 9, 2026 — Delete Class shipped, class-lifecycle gap CLOSED
+
+Picked up Priority 1 from the September 7 rollup (audit class lifecycle before relaunch), found the one real gap, and shipped it. **PR #5 merged as `ef18f99` and deployed to production; Delete Class is live at `app.pulseacademic.com`.**
+
+### What the audit found
+
+Create class, rename class, switch active class, and add/remove students all already existed and were left alone. **Permanent class deletion did not exist anywhere in the app.** With a client-side cap of six classes and no delete path, a mistyped or finished class occupied a slot forever. Archive and restore also do not exist, and remain **unbuilt by choice** (see below).
+
+### What shipped
+
+- **Secondary "Delete class" action** at the bottom of each expanded roster card, deliberately low-emphasis so it does not compete with everyday roster actions.
+- **Exact-name typed confirmation.** The teacher types the class name exactly before the red "Delete permanently" button enables. Empty, partial, and wrong-case input all leave it disabled; surrounding whitespace is tolerated; a blank class name can never confirm. The modal states that deletion is permanent and lists what is lost (lessons, check-ins and status history, reteach history and small-group data, skills/mastery), and states explicitly that students are not deleted.
+- **Class-specific cascade.** One scoped `delete from classes where id = ...`; Postgres cascades to `student_classes`, `lessons`, `checkins` (via lessons), `skills`, and `skill_mastery` (via skills). Every one of those FKs was verified `ON DELETE CASCADE` by querying `pg_constraint.confdeltype` against the live schema. Reteach data is the `checkins.retaught_count` column, not a separate table, so it goes with the check-ins. **No migration was required.** The existing `owner` RLS policy on `classes` is `cmd: ALL` scoped to `auth.uid()`, so delete was already permitted and already owner-scoped.
+- **Student rows intentionally preserved.** Students link to classes only through `student_classes`. A student in another class keeps that class and all its history; a student whose only class was deleted keeps their row as an unattached record. **Orphan rows are tolerated on purpose. No orphan cleanup was added, and none should be added casually** — the reasoning is that temporary orphans are cheaper than accidentally destroying student data.
+- **`week_plans` deliberately untouched.** It carries a `class_id` column but **has no foreign key on it**, so it does not cascade and a naive "delete everything with this class_id" would have reached it. Both loaders in `App.tsx` query it by `user_id` + `week_start` only, never by `class_id` — plans are **user-level and shared across all classes**. Deleting by `class_id` there would have destroyed week planning for every class the teacher owns. This was the one real trap in the schema.
+- **Active-class reassignment.** Deleting a non-active class leaves the selection alone. Deleting the active class moves the teacher to the first remaining class and clears lesson context (active lesson, statuses, lesson input, exit tickets, subject). **Deleting the last class clears the selection to `''` and returns the existing no-class empty state.** History and Reports filters pointing at the deleted class are repaired (History follows, Reports falls back to All classes). No stale class id is left anywhere.
+- **6-class cap now frees correctly** after a deletion, with no page refresh required.
+
+### Verification
+
+- **17 tests passing.** Vitest was added as a devDependency with a `test` script; **the repo previously had no test infrastructure at all** (no runner, no test files, no script). Decision logic was extracted into a pure module (`src/lib/deleteClass.ts`) so it is testable without mounting the app. Coverage: non-active delete, active delete with others remaining, final class, cap freeing, exact-name confirmation (rejecting partial/empty/wrong-case/wrong-class), demo mode performing no destructive write, and Supabase failure keeping the class and surfacing an error.
+- **Live-database verification, in a transaction that was rolled back.** Fixture: two classes, a student in **both**, a second student in **only** the doomed class, lessons in each, check-ins with non-zero `retaught_count`, a skill and a mastery row. Result: the class, its memberships, lessons, check-ins, skill and mastery all gone; the kept class kept all of its own data; **both students survived**, including the one whose only class was deleted. A follow-up query confirmed zero probe residue and untouched production data.
+- **Real-UI verification** via Playwright with PostgREST intercepted (no production writes): confirmation gating at every input state, a forced 500 surfacing an error and keeping the class, instant removal with no refresh, kept-class students intact, active-class switch landing on a valid class, and the empty state with "+ Add class" available again after the last delete.
+- `npx tsc -b` clean, `npm run build` clean, `npm run lint` **unchanged at the pre-existing 8-problem baseline**.
+- **Production deployment `dpl_C4idkNfG7EAHMgtp2oK8i9AfGwcG` confirmed `READY`**, target production, built from `ef18f99` — checked via the Vercel MCP, not inferred from a green PR check.
+- **Greg personally click-tested the preview** across the six highest-risk flows before merge, then explicitly authorized it. Squash-merged, branch deleted.
+
+### Worth not repeating
+
+The active-class reassignment initially called the existing `switchSubject()` helper. That helper is defined **below** the `atRiskStudentIds` and `todayFlaggedCount` memos, and calling it from a function above them broke React Compiler's memoization analysis, adding two `Compilation Skipped: Existing memoization could not be preserved` errors. Bisected to confirm it was the sole cause. Fixed by resetting lesson context inline, which is also more correct since there is no lesson to resume after a delete.
+
+### Two things to know before touching this
+
+- **Deletion is permanent with no undo.** A class deleted in September is gone in June. That is the accepted scope, not an oversight. Archive is the obvious follow-up if it ever becomes a real complaint.
+- **The `isDemo` guard in `rosterDeleteClass` is unreachable dead code.** The Roster screen is gated behind `{!isDemo && ...}` in both nav locations, so a demo user cannot reach this UI. It was retained as defensive code. Do not test it in demo mode and conclude it is broken.
+
+### Files touched
+
+`src/lib/deleteClass.ts` (new), `src/lib/deleteClass.test.ts` (new), `src/App.tsx`, `src/components/RosterScreen.tsx`, `src/types.ts`, `package.json`, `package-lock.json`. No schema migration, no edge-function or AI changes, no auth changes, no marketing-site changes.
+
+---
+
+## Session: September 7, 2026 (END OF DAY ROLLUP) — superseded in part, see September 9 above
 
 Consolidated status for everything completed on September 7, 2026. The entries below this one are the individual session logs and remain accurate; read them only if you need detail this summary does not give you.
 
@@ -51,20 +93,35 @@ Consolidated status for everything completed on September 7, 2026. The entries b
 
 ### Next session
 
+> **⭐ UPDATE September 9, 2026 — Priority 1 below is CLOSED. Do not re-run that audit.** It was performed, the single real gap was permanent class deletion, and that shipped as PR #5 (merge commit `ef18f99`, production deployment `dpl_C4idkNfG7EAHMgtp2oK8i9AfGwcG`, state READY). **Delete Class is live at `app.pulseacademic.com`.** See the September 9 entry at the top of this file for the full record. The revised priority list is under "Remaining relaunch blockers" below.
+
+~~1. **Audit class lifecycle and account-maintenance features before public relaunch.**~~ **DONE September 9, 2026.** Findings, so nobody re-derives them:
+
+   | Operation | Status |
+   |---|---|
+   | create class | already existed (`rosterAddClass`) |
+   | rename / edit class | already existed (`rosterRenameClass`) |
+   | switch active class | already existed |
+   | add / remove students | already existed (`rosterAddStudent` / `rosterRemoveStudent`) |
+   | **permanently delete class** | **was missing, BUILT AND SHIPPED September 9** |
+   | archive class | **not built, by choice** |
+   | restore archived class | **not built, by choice** |
+
+   - **Associated data on delete, verified against the live schema** (queried `pg_constraint.confdeltype`, not assumed): `student_classes`, `lessons`, `checkins` (via lessons), `skills`, and `skill_mastery` (via skills) all `ON DELETE CASCADE` from the class row. A single `delete from classes` is sufficient; **no migration was required.**
+   - **Student rows are intentionally preserved.** Students link to classes only through `student_classes`, so a student in another class keeps that class and its history, and a student whose only class was deleted keeps their row. Orphan rows are tolerated on purpose; **no orphan cleanup exists and none should be added casually.**
+   - **`week_plans` is deliberately untouched.** It carries a `class_id` column but **has no foreign key on it**, and the app loads plans by `user_id` + `week_start` only. Plans are **user-level and shared across all classes**; deleting by `class_id` there would destroy week planning for every class the teacher owns. Do not add a cascade there without re-reading how the Plan screen loads.
+   - **Archive/restore are a FUTURE lifecycle feature, not leftover work from this fix.** Delete was chosen because it closes the 6-class-cap trap immediately with no schema change; archive needs a migration plus a filter pass across every query. Deletion is permanent with no undo, which is the accepted scope. Revisit archive only if teachers actually ask.
+
+### Remaining relaunch blockers
+
 Priorities, in order:
 
-1. **Audit class lifecycle and account-maintenance features before public relaunch.** Walk each one and establish what actually exists today versus what is missing:
-   - create class
-   - rename / edit class
-   - switch active class
-   - add / remove students
-   - archive class
-   - restore archived class
-   - permanently delete class
-   - **verify what happens to associated data in each case**: lessons, reports, mastery/status history, reteach data, check-ins
-   - **Identify only the actual gaps. Do not rebuild features that already exist.** Read the code first and confirm before proposing work.
-2. **Review whether PKCE should be the next auth hardening step.** See the deferred note above; `/reset` already did the groundwork.
-3. **Review marketing site and relaunch positioning** after the product-maintenance gaps are settled, not before.
+1. **Gmail "This message might be dangerous" warning on reset emails.** Not an auth failure (SPF/DKIM/DMARC all verified passing). Driven by a new sending domain with near-zero reputation, `p=none` DMARC, and thin template content. `/reset` (PR #4) already shipped and handled the raw-`supabase.co`-link half. Remaining levers: move DMARC to `p=quarantine`, fill out the email template.
+2. **Duplicate React key warning in `ReportsScreen.tsx`.** Open, non-blocking, still never investigated.
+3. **Stale marketing-site copy** in `pulse-academic-website` (separate repo). Still exit-ticket-heavy positioning; in-app copy was rebalanced September 7 but the site was never touched.
+4. **PKCE migration, as its own larger task.** The implicit flow puts real credentials in the URL fragment and is the root cause of the whole recovery bug class; Supabase treats it as legacy. Cheap now that `/reset` exists. Clerk was considered and is NOT recommended: a large migration for problems Supabase-with-PKCE already solves for a single-role teacher app.
+
+**Still true and carried forward:** signup/relaunch remains intentionally **PAUSED** until explicitly resumed. Do not reopen it as a side effect of any other work.
 
 ### Known identifiers
 
@@ -76,6 +133,7 @@ Priorities, in order:
 | PR #2 | `719c7a1bca8ea50996d4da7d3b12222645bb6817` |
 | PR #3 | `f7ed6b9b6c963f417ab1b500c3c1db226a06d009` / `dpl_6CM5jZaPA1A5851wqGECdjjRUaPq` |
 | PR #4 | `3a81ffa5824b4c5f473c4c34e6ae2418baf73a14` / `dpl_FN9hyhqyyandFKvZHcHXvoFUAQU2` |
+| PR #5 (Delete Class) | `ef18f99281ced9e4927c05e5967948183d151b75` / `dpl_C4idkNfG7EAHMgtp2oK8i9AfGwcG` |
 | UX pass | `6066428d71ba64fd861c850abab22fcbb1608143` / `dpl_4dVX8KTmW8EAPspiFgZu5qD8AYzF` |
 | AI migration | `1bf14ddc0d0e8f483793392e60522c804a2bbeba` |
 
