@@ -67,6 +67,29 @@ Pulse Academic is a teacher-facing app for tracking student progress, managing l
 2. Show loading state while fetching.
 3. Handle errors gracefully (toast or inline message).
 
+## Codex Review Policy
+
+`/codex-review` (`.claude/skills/codex-review/SKILL.md`) gets a read-only second opinion from Codex (`gpt-6.1-sol`, `-s read-only`). Codex reviews, Claude is the only editor and decides every finding (ACCEPT / PARTIALLY ACCEPT / REJECT). Two Codex passes maximum per review. It never commits, pushes, deploys, or touches Supabase.
+
+- **Plan first for non-trivial work.** When Greg asks for a plan or "the Codex review loop", or the work is risky (below): write the plan to `plans/<slug>.md`, run `/codex-review plan plans/<slug>.md`, and implement only after the plan survives. An open BLOCKER or unresolved disagreement after pass 2 goes to Greg, not into code.
+- **Diff review before commit** for risky changes, after lint/test/build pass: `/codex-review`. Risky means Supabase reads or writes (especially upserts), anything touching historical assessment data, migrations/RLS/grants, deletion paths, auth, `supabase/functions/*`, AI calls and lesson-plan upload, demo mode (`isDemo`), or any redesign work. When unsure, treat it as risky.
+- **Skip** for copy, styling, docs, comments, `plans/`, `.claude/` files, and obvious one-liners. Greg can ask for either mode on anything.
+- Review artifacts go in `.codex-review/` (gitignored). Never commit them.
+
+## Current redesign direction
+
+Context: `Brain/Pulse Academic Simplification Audit.md` and `Brain/Pulse Academic Core Redesign Plan.md`. These later decisions win where they conflict with those docs:
+
+- Class grid + student quick sheet remains the leading interaction.
+- Untouched students stay neutral/unmarked, never automatically Got it. An optional, explicit "Mark remaining as Got it" action is fine.
+- Weekly lesson-plan upload stays.
+- AI extracts one daily learning focus, not multiple skills. If it can't confidently identify the focus, fall back to the lesson name/number (e.g. "Lesson 17"). The teacher can manually override today's focus. This supersedes the Core Redesign Plan's "no AI extraction in the new core".
+- One overall result per student per check. Multi-skill fan-out leaves the new core.
+- Notes remain secondary. A note never creates or changes a result.
+- Rechecks create new dated evidence and preserve original results.
+- The planner is reduced to supplying the daily focus, not removed wholesale.
+- Existing historical data stays readable. No destructive migrations without Greg's explicit sign-off, and verify live schema before any migration work.
+
 ## Debugging cross-platform bugs
 
 If a bug appears on iOS, Safari, PWA, or Android — or if the same fix has failed more than once:
