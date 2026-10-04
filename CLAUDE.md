@@ -5,7 +5,7 @@
 
 ## Project overview
 
-Pulse Academic is a teacher-facing app for tracking student progress, managing lesson plans, and building progress reports. Core screens: Landing, Auth, Setup, Tracker, Roster, History, Reports, Plan.
+Pulse Academic is a teacher-facing app for checking student understanding: open a class, tap a student, record Got it / Check again / Needs help / Not here, see who needs help, and recheck them later. Core screens: Auth, Setup, Tracker (the class workspace), Plan, Roster.
 
 ## Inherited rules from global CLAUDE.md
 
@@ -88,7 +88,11 @@ Context: `Brain/Pulse Academic Simplification Audit.md` and `Brain/Pulse Academi
 - Notes remain secondary. A note never creates or changes a result.
 - Rechecks create new dated evidence and preserve original results.
 - The planner is reduced to supplying the daily focus, not removed wholesale.
-- Existing historical data stays readable. No destructive migrations without Greg's explicit sign-off, and verify live schema before any migration work.
+- Labels: Got it, Check again, Needs help, Not here, Not checked. Stored values stay `got-it`, `almost`, `needs-help`, `absent`, and null.
+- **No real users besides Greg (decided 2026-10-02).** Old Pulse test data is disposable. Don't build backwards compatibility for old data, old screens, or stale browser tabs.
+- Checks live in `checks` and `check_results` (migration `20261003032810_core_checks`). Results in those tables are evidence: ended checks are read-only and nothing deletes them.
+- The legacy tables (`lessons`, `checkins`, `skills`, `skill_mastery`, `subject_mappings`) are no longer read or written. They stay untouched until Greg explicitly approves dropping them (Step 3 of `plans/core-redesign.md`).
+- No destructive migrations without Greg's explicit sign-off, and verify live schema before any migration work.
 
 ## Debugging cross-platform bugs
 

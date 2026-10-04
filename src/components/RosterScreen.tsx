@@ -1,14 +1,9 @@
-import type { RosterScreenProps, AppClass, AppStudent, NameFormat, Screen } from '../types'
+import type { RosterScreenProps, AppClass, AppStudent, NameFormat } from '../types'
 
 interface ExtraProps extends RosterScreenProps {
   SUBJECTS: string[]
-  setScreen: (screen: Screen) => void
-  setSelectedStudentId: (id: string | null) => void
-  setHistoryClassId: (id: string) => void
   nameFormat: NameFormat
   cycleNameFormat: () => void
-  showSkills: boolean
-  toggleShowSkills: () => void
 }
 
 export default function RosterScreen(props: ExtraProps) {
@@ -18,12 +13,11 @@ export default function RosterScreen(props: ExtraProps) {
     setRosterRenaming, rosterConfirmRemove, rosterRemoveStudent, setRosterConfirmRemove, rosterNewStudentName, setRosterNewStudentName,
     rosterAddStudent, setRosterPasteClassId, setRosterPasteText, setRosterCopySourceClassId, setRosterCopyTargetClassId, rosterCopySourceClassId,
     rosterCopyTargetClassId, rosterCopyFromClass, rosterPasteClassId, rosterPasteText, rosterParsing, rosterBulkAdd,
-    setScreen, setSelectedStudentId, setHistoryClassId,
     rosterRenamingStudent, setRosterRenamingStudent, rosterStudentRenameValue, setRosterStudentRenameValue, rosterRenameStudent,
     expandedRosterClassId, setExpandedRosterClassId,
     rosterDeletingClass, setRosterDeletingClass, rosterDeleteConfirmText, setRosterDeleteConfirmText,
     rosterDeleteError, rosterDeleteClass, rosterCancelDeleteClass,
-    nameFormat, cycleNameFormat, showSkills, toggleShowSkills
+    nameFormat, cycleNameFormat,
   } = props
 
   const deletingClass = classes.find((c: AppClass) => c.id === rosterDeletingClass) ?? null
@@ -46,15 +40,6 @@ export default function RosterScreen(props: ExtraProps) {
               style={{ background: 'rgba(255,255,255,0.07)', color: '#8b8b9a' }}
             >
               {nameFormat === 'full' ? 'Full' : nameFormat === 'first' ? 'First' : 'Init'}
-            </button>
-            <button
-              type="button"
-              onClick={toggleShowSkills}
-              title="Toggle skill tracking display"
-              className="shrink-0 text-xs font-semibold px-3 py-2 rounded-xl transition-colors hover:text-teal-400"
-              style={{ background: 'rgba(255,255,255,0.07)', color: showSkills ? '#2dd4bf' : '#8b8b9a' }}
-            >
-              {showSkills ? 'Skills ✓' : 'Skills off'}
             </button>
             {classes.length < 6 && !rosterAddingClass && (
               <button type="button" onClick={() => setRosterAddingClass(true)} className="shrink-0 text-xs font-semibold text-teal-400 hover:text-teal-300 px-3 py-2 rounded-xl" style={{ background: 'rgba(20,184,166,0.1)' }}>
@@ -178,14 +163,7 @@ export default function RosterScreen(props: ExtraProps) {
                             </div>
                           ) : (
                             <>
-                              <button
-                                type="button"
-                                onClick={() => { setHistoryClassId(cls.id); setSelectedStudentId(s.id); setScreen('history') }}
-                                className="text-sm text-left truncate font-medium transition-colors hover:text-teal-400"
-                                style={{ color: '#c0c0cc' }}
-                              >
-                                {s.name}
-                              </button>
+                              <span className="text-sm truncate font-medium" style={{ color: '#c0c0cc' }}>{s.name}</span>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {rosterConfirmRemove?.studentId === s.id && rosterConfirmRemove?.classId === cls.id ? (
                                   <>
@@ -286,10 +264,7 @@ export default function RosterScreen(props: ExtraProps) {
                 This is permanent and cannot be undone. Deleting this class also deletes everything recorded for it:
               </p>
               <ul className="text-sm flex flex-col gap-1 pl-4" style={{ color: '#8b8b9a' }}>
-                <li>Lessons for this class</li>
-                <li>Check-ins, notes, and status history</li>
-                <li>Reteach history and small group data</li>
-                <li>Skills and mastery tracking for this class</li>
+                <li>Checks, results, and notes for this class</li>
               </ul>
               <p className="text-sm" style={{ color: '#8b8b9a' }}>
                 Your students are not deleted. They stay in your other classes, along with that work.
