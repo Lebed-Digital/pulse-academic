@@ -33,3 +33,6 @@ supabase/.temp/
 # Codex-generated scripts dropped in wrong folder
 VIDEO_SHORT_CAPTION_WORKFLOW.md
 caption_video.py
+
+# Codex review artifacts (read-only reviewer output, never commit)
+.codex-review/
