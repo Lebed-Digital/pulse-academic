@@ -1,6 +1,6 @@
 # Pulse Academic Core Redesign: Implementation Plan (v2)
 
-- Status: Step 2 IMPLEMENTED on branch `feat/core-redesign` (2026-10-03) and passed the Codex diff review (VERIFIED). Greg's signed-in preview test (2026-10-03) passed the core loop, the plan upload and the two-device refusal. A Done for now button was added to the grid header after that test (commit `f0b8cca`, Codex diff review `NO_ACTIONABLE_FINDINGS`). The airplane-mode, Delete Class, remaining planner and phone-trial checks are still open (see "Preview testing by Greg"). Not merged. Step 3 (dropping legacy tables) is not started.
+- Status: Step 2 IMPLEMENTED on branch `feat/core-redesign` (2026-10-03) and passed the Codex diff review (VERIFIED). Greg's signed-in preview test (2026-10-03) passed the core loop, the plan upload, the two-device refusal, the airplane-mode Save and Delete Class. A Done for now button was added to the grid header after the first test (commit `f0b8cca`, Codex diff review `NO_ACTIONABLE_FINDINGS`). The remaining planner actions and the phone trial are still open (see "Preview testing by Greg"). Not merged. Step 3 (dropping legacy tables) is not started.
 - Written: 2026-10-02
 - Authority: CLAUDE.md "Current redesign direction" first, then Greg's 2026-10-02 decisions recorded in section 2, then `Brain/Pulse Academic Core Redesign Plan.md`.
 - Supersedes: v1 of this file (a compatibility-first design), and `IMPLEMENTATION_PLAN.md` (Small Group Pull List).
@@ -623,9 +623,19 @@ An earlier attempt the same evening looked like a regression (cycling statuses, 
   - Legacy `checkins`: last write still 00:26 UTC. Nothing from this build.
 - This is the first run of the real signed-in path for the grid's Done for now button and for the ended-check refusal from the app.
 
+- The request log shows the same thing at the HTTP level: the check was ended at 02:14:34 UTC (200), and the Save from the other device 8 seconds later was refused with 403.
+
+**Airplane-mode Save: passed, per Greg (2026-10-03).** This one can't be checked from the server, because the request never leaves the phone. The database shows no stray writes.
+
+**Delete Class: passed (2026-10-03).** Greg deleted the class he calls math-obrien on the preview. Verified from the request log and counts-only queries:
+- One class delete in the last 24 hours: 02:28:31 UTC, status 204, sent from the `feat/core-redesign` preview.
+- Just before it, a check was created in that class (02:27:44, 201) and one result saved in it (02:27:49, 201). Both are gone: no check started and no result created at or after 02:27:40 remains.
+- Rows still pointing at the deleted class id: 0 in `classes`, `student_classes`, `checks`, `week_plans`, `lessons` and `skills`. No result is left without its check.
+- The other classes are untouched: `check_results` is still 26 rows, newest from 00:44 UTC.
+- No class is named math-obrien now. One other class with "obrien" in its name remains (no "math" in the name, 24 students, no checks). Greg to confirm that is a different class he meant to keep.
+- By design (comment above the delete in `src/App.tsx`), Delete Class leaves student records in place. 5 student records now belong to no class, all created before tonight, and none has a result. Counts can't say how many came from this class.
+
 **Still to test before merge:**
-- Airplane-mode Save keeps the draft
-- Delete Class on a throwaway class removes its checks
 - Planner: the vague-plan "Lesson N" fallback, Edit, Add, Remove, Skip day with push-back
 - Phone trial with a real class, standing and one-handed
 
