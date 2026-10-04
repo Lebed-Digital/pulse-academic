@@ -1,6 +1,6 @@
 # Pulse Academic Core Redesign: Implementation Plan (v2)
 
-- Status: Step 2 IMPLEMENTED on branch `feat/core-redesign` (2026-10-03) and passed the Codex diff review (VERIFIED). Waiting for Greg to prove the preview and merge. Step 3 (dropping legacy tables) is not started.
+- Status: Step 2 IMPLEMENTED on branch `feat/core-redesign` (2026-10-03) and passed the Codex diff review (VERIFIED). Greg's signed-in preview test (2026-10-03) passed the core loop and the plan upload; the two-device, airplane-mode, Delete Class and phone-trial checks are still open (see "Preview testing by Greg"). Not merged. Step 3 (dropping legacy tables) is not started.
 - Written: 2026-10-02
 - Authority: CLAUDE.md "Current redesign direction" first, then Greg's 2026-10-02 decisions recorded in section 2, then `Brain/Pulse Academic Core Redesign Plan.md`.
 - Supersedes: v1 of this file (a compatibility-first design), and `IMPLEMENTATION_PLAN.md` (Small Group Pull List).
@@ -548,7 +548,7 @@ Migration applied as `20261003032810 core_checks`. The SQL is saved at `supabase
 | Demo walkthrough in a real browser at phone size | 59 of 59 checks: grid, sheet, note-only, Not here, corrections, discard, Mark remaining, results, student history, Done for now, recheck, class switch, 320px width, large text, keyboard trap, and no calls to Supabase tables or the AI |
 | Signed-in walkthrough against a mocked Supabase | 58 of 58 checks, including the exact requests the app sends: merge upserts that carry only the changed field, the duplicate-ignoring insert, the "only if unmarked" update, refusal on an ended check, recheck linking, keyset paging, and the planner (AI subject list, save payload, Add/Remove, in-week push-back, failed-save retry) |
 
-**Not verified by Claude:** the real Supabase write path from the app. That needs a signed-in account, so Greg does it on the preview (section 11).
+**Not verified by Claude:** the real Supabase write path from the app. That needs a signed-in account, so Greg does it on the preview (section 11). His results are in "Preview testing by Greg" below.
 
 **Three bugs the browser runs caught and fixed before review:**
 - The bottom tab bar covered the sheet's Save button. Sheets now sit above it.
@@ -565,6 +565,51 @@ Pass 1 found no blockers and four IMPORTANT issues. Pass 2 replied `VERIFIED`.
 | D2 | Switching weeks during extraction left the other week stuck on Loading | ACCEPT | Week switching is locked while a plan is being read or saved |
 | D3 | Skip day, Remove and the edit Save could overlap whole-week saves | ACCEPT | Every planner change is blocked while a save or extraction is running |
 | D4 | The student sheet didn't contain keyboard focus | PARTIALLY ACCEPT | Tab and Shift+Tab are trapped inside the sheet. Not adopted: making the background inert, since touch can't reach behind the full-screen overlay |
+
+### Preview testing by Greg, signed in (2026-10-03)
+
+Run on the `feat/core-redesign` preview (commit `c4f62e3`) against the real Supabase project. This is the write path Claude could not verify.
+
+An earlier attempt the same evening looked like a regression (cycling statuses, several labels per student, note-only turning into Got it). It was run on the `main` branch address, which is the old app. Supabase request logs showed every request came from that address and none touched the new tables. Nothing was wrong with this branch and no code changed.
+
+| Area | Result |
+| --- | --- |
+| Class grid and quick sheet | Passed |
+| Results after a refresh | Passed: they persist |
+| Needs help | Passed: stays Needs help |
+| Not here | Passed: stays Not here |
+| Note-only save | Passed: the note persists and the student does not become Got it |
+| Mark remaining as Got it | Passed |
+| Rechecks, results, student history | Passed ("appears correct") |
+| Weekly lesson-plan upload with a real plan | Passed once **Next week** was selected. Math extracted correctly |
+
+**The plan upload was not a parser fault.** The first try showed "No lessons found". The test ran on Saturday Oct 3, and the Oct 5 to 9 plan was uploaded under **This week**. On a weekend, This week is still the week that just ended (Sep 28 to Oct 2, from `getWeekStart` in `src/App.tsx`). The importer keeps only lessons dated inside the selected week, so finding none was correct. The same plan imported under Next week.
+
+**Counts-only database check after the test** (no names, notes or other content read):
+
+| Check | Result |
+| --- | --- |
+| `checks` | 3 rows across 2 classes, 1 of them a recheck. All 3 open, 0 ended |
+| `check_results` | 26 rows: 22 Got it, 2 Check again, 1 Needs help, 1 Not here |
+| One row per student per check | Holds: no duplicates |
+| Rows outside a check's participant list | None |
+| Rows with a note | 1, and its result is now Got it. A note-only student counts as unchecked, so Mark remaining fills it (7.2). That fits the note-only test followed by Mark remaining, but counts alone can't prove the order |
+| `week_plans` | Newest week is 2026-10-05, the Next week upload |
+| Legacy `lessons` and `checkins` | Last written 00:26 UTC, before the first new check at 00:35 UTC. That was the mistaken test on the old app. The new build wrote nothing to them |
+
+**How a check ends** (Greg couldn't find it during the test):
+- A check ends only through `endCheck` in `src/lib/checksDb.ts`, called from `finishCheck` in `src/components/Workspace.tsx`. Two buttons reach it:
+  - **Done for now** on the results screen: from the grid, scroll below the last student, tap View results, then Done for now.
+  - **End it and start new** on the class home: tap Start a new check under Continue check, then confirm.
+- The back control on the grid (`‹ class name`) only returns to the class home. It writes nothing, and the check stays open as Continue check. That is the reviewed design (deviations table above). The 3 open and 0 ended checks in the database agree.
+- No code changed. The action exists, but it is one scroll and two taps from the grid, behind a button named View results. Open suggestion, not built: a Done for now button in the grid header.
+
+**Still to test before merge:**
+- Phone and laptop: Done for now on one, then Save on the other. Expected: the sheet stays open with "Not saved. Try again."
+- Airplane-mode Save keeps the draft
+- Delete Class on a throwaway class removes its checks
+- Planner: the vague-plan "Lesson N" fallback, Edit, Add, Remove, Skip day with push-back
+- Phone trial with a real class, standing and one-handed
 
 
 ## Codex review log (fresh cycle, v2)
