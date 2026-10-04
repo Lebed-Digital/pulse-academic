@@ -1,6 +1,6 @@
 # Pulse Academic Core Redesign: Implementation Plan (v2)
 
-- Status: Step 2 IMPLEMENTED on branch `feat/core-redesign` (2026-10-03) and passed the Codex diff review (VERIFIED). Greg's signed-in preview test (2026-10-03) passed the core loop and the plan upload; the two-device, airplane-mode, Delete Class and phone-trial checks are still open (see "Preview testing by Greg"). Not merged. Step 3 (dropping legacy tables) is not started.
+- Status: Step 2 IMPLEMENTED on branch `feat/core-redesign` (2026-10-03) and passed the Codex diff review (VERIFIED). Greg's signed-in preview test (2026-10-03) passed the core loop, the plan upload and the two-device refusal. A Done for now button was added to the grid header after that test (commit `f0b8cca`, Codex diff review `NO_ACTIONABLE_FINDINGS`). The airplane-mode, Delete Class, remaining planner and phone-trial checks are still open (see "Preview testing by Greg"). Not merged. Step 3 (dropping legacy tables) is not started.
 - Written: 2026-10-02
 - Authority: CLAUDE.md "Current redesign direction" first, then Greg's 2026-10-02 decisions recorded in section 2, then `Brain/Pulse Academic Core Redesign Plan.md`.
 - Supersedes: v1 of this file (a compatibility-first design), and `IMPLEMENTATION_PLAN.md` (Small Group Pull List).
@@ -613,8 +613,17 @@ An earlier attempt the same evening looked like a regression (cycling statuses, 
 - Codex diff review (1 file, 12 lines added, 4 removed): pass 1 replied `NO_ACTIONABLE_FINDINGS`. No second pass needed.
 - Found, not changed: the grid header is marked sticky but scrolls away with the page, because `body`, `#root` and the app root all set `overflow-x: hidden`. That was already true. So the button is on screen when the grid opens and leaves with the header on a long class.
 
+**Two-device test: passed (2026-10-03, on the build with the grid button, commit `f0b8cca`)**
+- Greg ended a check with Done for now on one device, then tried to Save on the other without refreshing. The sheet stayed open with "Not saved. Try again."
+- Counts-only database check right after (no names, notes or other content read):
+  - `checks`: 4 rows, 2 open and 2 ended. Before the test it was 3 rows, all open. The newest was ended at 02:14 UTC.
+  - `check_results`: still 26 rows, and the newest row is from 00:44 UTC, the first test. The refused Save wrote nothing.
+  - No result row was created after its check ended. The spread is unchanged: 22 Got it, 2 Check again, 1 Needs help, 1 Not here. Still no duplicates.
+  - The check started and ended during the test has 0 result rows.
+  - Legacy `checkins`: last write still 00:26 UTC. Nothing from this build.
+- This is the first run of the real signed-in path for the grid's Done for now button and for the ended-check refusal from the app.
+
 **Still to test before merge:**
-- Phone and laptop: Done for now on one (top right of the grid), then Save on the other. Expected: the sheet stays open with "Not saved. Try again."
 - Airplane-mode Save keeps the draft
 - Delete Class on a throwaway class removes its checks
 - Planner: the vague-plan "Lesson N" fallback, Edit, Add, Remove, Skip day with push-back
