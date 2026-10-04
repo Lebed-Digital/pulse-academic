@@ -156,7 +156,10 @@ export default function Workspace({ userId, isDemo, cls, students, schedule, tod
   }
 
   async function doneForNow(check: Check) {
-    if (await finishCheck(check)) setView({ kind: 'idle' })
+    if (!(await finishCheck(check))) return
+    setFocusDraft(null)
+    setConfirmMark(false)
+    setView({ kind: 'idle' })
   }
 
   async function endAndStartNew() {
@@ -305,9 +308,14 @@ export default function Workspace({ userId, isDemo, cls, students, schedule, tod
     return (
       <>
         <div className="sticky top-0 z-10 px-4 py-3" style={{ background: '#111113', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <button type="button" onClick={() => { setFocusDraft(null); setConfirmMark(false); setView({ kind: 'idle' }) }} className="text-xs font-semibold mb-2" style={{ color: '#8b8b9a' }}>
-            ‹ {cls.name}
-          </button>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <button type="button" onClick={() => { setFocusDraft(null); setConfirmMark(false); setView({ kind: 'idle' }) }} className="min-w-0 truncate text-xs font-semibold" style={{ color: '#8b8b9a' }}>
+              ‹ {cls.name}
+            </button>
+            <button type="button" onClick={() => doneForNow(viewCheck)} disabled={busy || focusDraft !== null} className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-40" style={{ background: 'rgba(255,255,255,0.07)', color: '#c0c0cc' }}>
+              Done for now
+            </button>
+          </div>
           {focusDraft === null ? (
             <button type="button" onClick={() => setFocusDraft(viewCheck.focus ?? '')} className="flex w-full items-start gap-2 text-left" aria-label="Edit focus">
               <span className="flex-1 min-w-0 text-sm font-semibold break-words" style={{ color: '#f0f0f2' }}>{checkLabel(viewCheck)}</span>

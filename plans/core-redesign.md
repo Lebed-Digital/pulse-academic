@@ -602,10 +602,19 @@ An earlier attempt the same evening looked like a regression (cycling statuses, 
   - **Done for now** on the results screen: from the grid, scroll below the last student, tap View results, then Done for now.
   - **End it and start new** on the class home: tap Start a new check under Continue check, then confirm.
 - The back control on the grid (`‹ class name`) only returns to the class home. It writes nothing, and the check stays open as Continue check. That is the reviewed design (deviations table above). The 3 open and 0 ended checks in the database agree.
-- No code changed. The action exists, but it is one scroll and two taps from the grid, behind a button named View results. Open suggestion, not built: a Done for now button in the grid header.
+- At the time of the test the action existed, but it was one scroll and two taps from the grid, behind a button named View results.
+
+**Follow-up fix: Done for now on the grid (2026-10-03, Greg's instruction)**
+- The grid header now has a **Done for now** button, top right, across from the back control. It calls the same `doneForNow`, `finishCheck` and `endCheck` as before. No new write path. The results screen keeps its own Done for now.
+- It is disabled while the focus is being edited, so a typed but unsaved focus isn't lost to a check that can no longer be edited.
+- `doneForNow` now also closes the focus editor and the Mark remaining confirm box when a check ends, the same two resets the back control does. Without it, a confirm box left open would reopen on the next check.
+- No confirm step, matching the results-screen button. Ending loses nothing: saved results stay and unchecked students stay Not checked.
+- Checks: lint unchanged (4 errors, all in `MicButton.tsx`), 40 tests pass, build passes. Browser run of the new button, in demo and against a mocked Supabase: 24 of 24, including the exact request (one update with only `ended_at`), ended on another device, a failed request, a long class name and 320px width. The two earlier walkthroughs still pass (59 of 59, 58 of 58).
+- Codex diff review (1 file, 12 lines added, 4 removed): pass 1 replied `NO_ACTIONABLE_FINDINGS`. No second pass needed.
+- Found, not changed: the grid header is marked sticky but scrolls away with the page, because `body`, `#root` and the app root all set `overflow-x: hidden`. That was already true. So the button is on screen when the grid opens and leaves with the header on a long class.
 
 **Still to test before merge:**
-- Phone and laptop: Done for now on one, then Save on the other. Expected: the sheet stays open with "Not saved. Try again."
+- Phone and laptop: Done for now on one (top right of the grid), then Save on the other. Expected: the sheet stays open with "Not saved. Try again."
 - Airplane-mode Save keeps the draft
 - Delete Class on a throwaway class removes its checks
 - Planner: the vague-plan "Lesson N" fallback, Edit, Add, Remove, Skip day with push-back
